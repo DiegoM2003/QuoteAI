@@ -1,0 +1,1511 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="QuoteAI — prototipo v1 de cotizador con IA para equipamiento gastronómico">
+<title>QuoteAI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sidebar shell (desktop) / bottom bar (mobile); paper-white A4 sheet for the quotation itself */
+:root{
+  --bg:#f3f5f2; --surface:#ffffff; --surface-2:#eaeee9; --ink:#17211d; --muted:#56635c; --line:#d6ddd7;
+  --accent:#0d5a50; --accent-ink:#ffffff; --accent-soft:#dfeeea; --accent-hover:#0a4a42;
+  --ai:#8a4600; --ai-soft:#fdf1df; --ai-line:#eec58a;
+  --ok:#1b6a3b; --ok-soft:#e1f2e6; --info:#24508f; --info-soft:#e3ecf8; --bad:#a3271f; --bad-soft:#f9e3e1; --neutral-soft:#e8ebe8;
+  --lock-bg:#eef0f3; --lock-ink:#3f4a57;
+  --paper:#ffffff; --paper-ink:#1d2421; --paper-muted:#5d6762; --paper-line:#d9dfdb; --paper-band:#eef2ef; --paper-accent:#0d5a50;
+  --shadow:0 1px 2px rgba(20,30,25,.06),0 4px 16px rgba(20,30,25,.06);
+  --f-display:"Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
+  --f-body:"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r:10px; --r-sm:7px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#18201c; --surface-2:#202a25; --ink:#e4ebe7; --muted:#9aa8a1; --line:#2c3732;
+  --accent:#5cc2b0; --accent-ink:#06201b; --accent-soft:#163a34; --accent-hover:#7dd3c3;
+  --ai:#f0b25c; --ai-soft:#30240f; --ai-line:#6a4a1c;
+  --ok:#72d29c; --ok-soft:#163222; --info:#93b6ef; --info-soft:#18263b; --bad:#f2918a; --bad-soft:#3b1a18; --neutral-soft:#26302b;
+  --lock-bg:#1f252d; --lock-ink:#b8c3d0; --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#18201c; --surface-2:#202a25; --ink:#e4ebe7; --muted:#9aa8a1; --line:#2c3732;
+  --accent:#5cc2b0; --accent-ink:#06201b; --accent-soft:#163a34; --accent-hover:#7dd3c3;
+  --ai:#f0b25c; --ai-soft:#30240f; --ai-line:#6a4a1c;
+  --ok:#72d29c; --ok-soft:#163222; --info:#93b6ef; --info-soft:#18263b; --bad:#f2918a; --bad-soft:#3b1a18; --neutral-soft:#26302b;
+  --lock-bg:#1f252d; --lock-ink:#b8c3d0; --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25); color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:1.75rem;font-weight:700} h2{font-size:1.15rem;font-weight:600} h3{font-size:1rem;font-weight:600}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.mono{font-family:var(--f-mono);font-size:.82em;letter-spacing:-.01em}
+.muted{color:var(--muted)}
+.ic{width:18px;height:18px;flex:none;vertical-align:-3px}
+.ic-sm{width:14px;height:14px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* shell */
+.app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100%}
+.side{position:sticky;top:env(safe-area-inset-top,0px);height:100vh;display:flex;flex-direction:column;gap:6px;padding:20px 14px;padding-left:max(14px,env(safe-area-inset-left,0px));border-right:1px solid var(--line);background:var(--surface)}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 18px}
+.brand-mark{width:32px;height:32px;border-radius:9px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:15px}
+.brand b{font-family:var(--f-display);font-size:1.15rem;display:block;line-height:1.1}
+.brand small{color:var(--muted);font-size:.75rem}
+.nav a{display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:8px;color:var(--ink);text-decoration:none;font-weight:500;min-height:42px}
+.nav a:hover{background:var(--surface-2)}
+.nav a[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+.side .btn.primary{margin:4px 0 14px;justify-content:center}
+.side-foot{margin-top:auto;padding:12px 10px 0;border-top:1px solid var(--line);font-size:.8rem;color:var(--muted)}
+.side-foot b{color:var(--ink);font-weight:600;display:block}
+main{min-width:0;padding-block:24px 48px;padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:max(28px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.bottombar{display:none}
+@media (max-width:860px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{display:none}
+  main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px calc(96px + env(safe-area-inset-bottom,0px))}
+  .bottombar{display:grid;grid-template-columns:repeat(5,1fr);align-items:end;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+  .bottombar a{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.7rem;color:var(--muted);text-decoration:none;min-height:48px;justify-content:center}
+  .bottombar a[aria-current="page"]{color:var(--accent);font-weight:600}
+  .bottombar .fab{width:52px;height:52px;border-radius:16px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;margin:-22px auto 0;box-shadow:var(--shadow)}
+  .bottombar .fab .ic{width:24px;height:24px}
+  h1{font-size:1.4rem}
+}
+
+/* generic */
+.pagehead{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
+.eyebrow{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 14px;min-height:42px;font-weight:600;cursor:pointer;color:var(--ink);text-decoration:none;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{background:var(--accent-hover)}
+.btn.ai{background:var(--ai-soft);border-color:var(--ai-line);color:var(--ai)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.ghost:hover{background:var(--surface-2)}
+.btn.danger{color:var(--bad)}
+.btn.sm{min-height:34px;padding:5px 10px;font-size:.85rem}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.iconbtn{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:8px;border:1px solid transparent;background:transparent;cursor:pointer;color:var(--muted)}
+.iconbtn:hover{background:var(--surface-2);color:var(--ink)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);min-width:0}
+.panel-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line)}
+.panel-body{padding:18px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label,.lbl{font-size:.8rem;font-weight:600;color:var(--muted)}
+.field .hint{font-size:.78rem;color:var(--muted)}
+.input,select.input,textarea.input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 11px;min-height:42px}
+textarea.input{min-height:120px;resize:vertical;line-height:1.5}
+.input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.input.err{border-color:var(--bad)}
+.err-text{color:var(--bad);font-size:.8rem}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.span2{grid-column:span 2}
+@media (max-width:640px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}.span2{grid-column:auto}}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;padding:3px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:7px 14px;border-radius:6px;cursor:pointer;font-weight:600;min-height:36px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:.75rem;font-weight:600;white-space:nowrap}
+.st-Borrador{background:var(--neutral-soft);color:var(--muted)}
+.st-Enviada{background:var(--info-soft);color:var(--info)}
+.st-Aceptada{background:var(--ok-soft);color:var(--ok)}
+.st-Rechazada{background:var(--bad-soft);color:var(--bad)}
+.cf-alta{background:var(--ok-soft);color:var(--ok)}
+.cf-media{background:var(--ai-soft);color:var(--ai)}
+.cf-baja{background:var(--neutral-soft);color:var(--muted)}
+.ai-tag{display:inline-flex;align-items:center;gap:4px;color:var(--ai);font-size:.75rem;font-weight:600}
+.ai-box{background:var(--ai-soft);border:1px solid var(--ai-line);border-radius:var(--r);padding:14px 16px}
+.lock{background:var(--lock-bg);color:var(--lock-ink);border-radius:var(--r);padding:14px 16px;border:1px dashed color-mix(in srgb,var(--lock-ink) 35%,transparent)}
+.lock-tag{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.notice{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:var(--r);background:var(--info-soft);color:var(--info)}
+.notice.bad{background:var(--bad-soft);color:var(--bad)}
+.notice.ok{background:var(--ok-soft);color:var(--ok)}
+.empty{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:28px;border:1.5px dashed var(--line);border-radius:var(--r);background:var(--surface)}
+
+/* dashboard */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.kpi .lbl{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.kpi .val{font-family:var(--f-display);font-size:1.7rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1;overflow-wrap:anywhere}
+.kpi .sub{font-size:.8rem;color:var(--muted)}
+.kpi.locked{background:var(--lock-bg);color:var(--lock-ink)}
+.bar{height:6px;border-radius:9px;background:var(--surface-2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:9px}
+.qlist{display:flex;flex-direction:column}
+.qrow{display:grid;grid-template-columns:118px minmax(0,1.6fr) 104px 130px 132px auto;gap:12px;align-items:center;padding:11px 18px;border-bottom:1px solid var(--line)}
+.qrow:last-child{border-bottom:0}
+.qrow.head{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding-block:9px;background:var(--surface-2)}
+.qrow .client{min-width:0}
+.qrow .client b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qrow .client small{color:var(--muted)}
+.status-sel{appearance:none;border:0;border-radius:99px;padding:5px 26px 5px 11px;font-size:.78rem;font-weight:600;cursor:pointer;background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);background-position:calc(100% - 13px) 50%,calc(100% - 9px) 50%;background-size:4px 4px;background-repeat:no-repeat;min-height:30px}
+.qactions{display:flex;gap:2px;justify-content:flex-end}
+@media (max-width:900px){
+  .qrow{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"c t" "n s" "d a";gap:6px 12px;padding:14px 16px}
+  .qrow.head{display:none}
+  .qrow .q-num{grid-area:n}.qrow .client{grid-area:c}.qrow .q-date{grid-area:d}.qrow .q-total{grid-area:t}.qrow .q-st{grid-area:s;justify-self:end}.qrow .qactions{grid-area:a}
+}
+
+/* wizard */
+.stepper{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.step{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:var(--surface);cursor:pointer;text-align:left;min-height:52px;min-width:0}
+.step .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.8rem;background:var(--surface-2);color:var(--muted);flex:none}
+.step b{display:block;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.step small{color:var(--muted);font-size:.74rem;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.step span{min-width:0}
+.step[aria-current="step"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.step[aria-current="step"] .n{background:var(--accent);color:var(--accent-ink)}
+.step.done .n{background:var(--accent-soft);color:var(--accent)}
+.step:disabled{cursor:not-allowed;opacity:.55}
+.stepper-mobile{display:none}
+@media (max-width:860px){.stepper{display:none}.stepper-mobile{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .stepper-mobile .dots{display:flex;gap:5px}.stepper-mobile .dots i{width:22px;height:5px;border-radius:9px;background:var(--line)}.stepper-mobile .dots i.on{background:var(--accent)}}
+.wiz{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:20px;align-items:start}
+.wiz-body{display:flex;flex-direction:column;gap:18px;min-width:0}
+.summary{position:sticky;top:calc(16px + env(safe-area-inset-top,0px))}
+.summary .rowx{display:flex;justify-content:space-between;gap:10px;padding:5px 0}
+.summary .total{border-top:1px solid var(--line);margin-top:6px;padding-top:10px;font-weight:700;font-size:1.1rem}
+@media (max-width:1100px){.wiz{grid-template-columns:minmax(0,1fr)}.summary{display:none}}
+.wiz-nav{position:sticky;bottom:env(safe-area-inset-bottom,0px);z-index:20;display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;box-shadow:var(--shadow)}
+.wiz.full{grid-template-columns:minmax(0,1fr)}.wiz.full .summary{display:none}
+@media (max-width:520px){.wiz-nav [data-act="back"] span{display:none}.kpi .val{font-size:1.3rem}.wiz-nav .btn{padding:9px 11px}}
+.wiz-nav .mini{white-space:nowrap;display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.wiz-nav .mini b{font-variant-numeric:tabular-nums;font-size:1.05rem}
+.wiz-nav .mini small{color:var(--muted);font-size:.75rem}
+@media (max-width:860px){.wiz-nav{bottom:calc(66px + env(safe-area-inset-bottom,0px))}}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.opt{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:12px;cursor:pointer;text-align:left;min-height:48px;font-weight:500;display:flex;align-items:center;gap:8px}
+.opt:hover{border-color:var(--accent)}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opts .opt{padding:8px 13px;min-height:42px;border-radius:99px}
+.qsec{display:flex;flex-direction:column;gap:10px;padding:18px 0;border-bottom:1px solid var(--line)}
+.qsec:first-child{padding-top:0}.qsec:last-child{border-bottom:0;padding-bottom:0}
+.typeahead{position:relative}
+.ta-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:25;background:var(--surface);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);overflow:hidden}
+.ta-list button{display:flex;width:100%;justify-content:space-between;gap:10px;padding:10px 12px;border:0;background:transparent;text-align:left;cursor:pointer;border-bottom:1px solid var(--line);min-height:44px}
+.ta-list button:last-child{border-bottom:0}
+.ta-list button:hover{background:var(--surface-2)}
+.qcard{border:1px solid var(--ai-line);border-radius:var(--r);background:var(--surface);padding:16px;display:flex;flex-direction:column;gap:10px}
+.qcard .why{font-size:.8rem;color:var(--ai)}
+.thinking{display:flex;align-items:center;gap:14px;padding:26px;border-radius:var(--r);background:var(--ai-soft);border:1px solid var(--ai-line);color:var(--ai);font-weight:600}
+.dots3{display:inline-flex;gap:4px}.dots3 i{width:7px;height:7px;border-radius:50%;background:currentColor;animation:blink 1.1s infinite}
+.dots3 i:nth-child(2){animation-delay:.18s}.dots3 i:nth-child(3){animation-delay:.36s}
+@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.pgroup{display:flex;flex-direction:column}
+.pgroup h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:14px 0 8px}
+.pline{display:grid;grid-template-columns:28px minmax(0,1fr) 74px 120px 120px;gap:12px;align-items:start;padding:12px 0;border-top:1px solid var(--line)}
+.pline.off{opacity:.62}
+.pline input[type=checkbox]{width:20px;height:20px;margin-top:2px;accent-color:var(--accent)}
+.pline .nm{font-weight:600}
+.pline .reason{font-size:.83rem;color:var(--ai);margin-top:4px;display:flex;gap:6px;align-items:flex-start}
+@media (max-width:640px){.pline{grid-template-columns:28px minmax(0,1fr) auto;}.pline .c-price{display:none}.pline .c-qty{grid-column:2}.pline .c-total{grid-column:3}}
+
+/* review lines */
+.lines{display:flex;flex-direction:column}
+.lrow{display:grid;grid-template-columns:22px minmax(0,1fr) 78px 112px 88px 120px 118px 36px;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface)}
+.lrow.head{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--surface-2)}
+.lrow.dragging{opacity:.4}.lrow.over{box-shadow:inset 0 2px 0 var(--accent)}
+.lrow .grip{cursor:grab;color:var(--muted);display:grid;place-items:center}
+.lrow .input{min-height:36px;padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums}
+.lrow .nm{font-weight:600;line-height:1.3}
+.lrow .meta{font-size:.78rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;margin-top:2px}
+.lrow .internal{background:var(--lock-bg);border-radius:6px;padding:4px 6px;color:var(--lock-ink)}
+.lrow .internal .input{background:transparent;border-style:dashed}
+.th-lock{display:inline-flex;align-items:center;gap:3px;justify-content:flex-end}
+.mlabel{display:none}
+@media (max-width:900px){
+  .lrow.head{display:none}
+  .lrow{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"p p" "q pr" "c m" "t t";gap:8px 12px;padding:14px;margin-bottom:10px;border:1px solid var(--line);border-radius:var(--r)}
+  .lrow .grip{display:none}.lrow .c-p{grid-area:p;padding-right:34px;position:relative}.lrow .c-q{grid-area:q}.lrow .c-pr{grid-area:pr}.lrow .c-c{grid-area:c}.lrow .c-m{grid-area:m}.lrow .c-t{grid-area:t;text-align:right;font-weight:700;border-top:1px solid var(--line);padding-top:8px}
+  .lrow .c-del{position:absolute;margin-left:auto;grid-area:p;justify-self:end;align-self:start}
+  .mlabel{display:block;font-size:.72rem;color:var(--muted);font-weight:600;margin-bottom:3px}
+  .lines{gap:0}
+}
+.totals{display:flex;flex-direction:column;gap:2px;min-width:260px}
+.totals .rowx{display:flex;justify-content:space-between;gap:24px;padding:5px 0}
+.totals .grand{border-top:2px solid var(--ink);margin-top:6px;padding-top:9px;font-weight:700;font-size:1.15rem}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:760px){.split{grid-template-columns:minmax(0,1fr)}.totals{min-width:0}}
+details.conv summary{cursor:pointer;font-weight:600;color:var(--ai);list-style:none;display:flex;gap:6px;align-items:center}
+details.conv summary::-webkit-details-marker{display:none}
+.conv-item{padding:8px 0;border-bottom:1px solid var(--ai-line);font-size:.86rem}
+.conv-item:last-child{border-bottom:0}
+
+/* catalog */
+.drop{border:2px dashed var(--line);border-radius:var(--r);padding:28px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;background:var(--surface);cursor:pointer}
+.drop.hover{border-color:var(--accent);background:var(--accent-soft)}
+.tablewrap{overflow-x:auto;border-radius:0 0 var(--r) var(--r)}
+table.t{width:100%;border-collapse:collapse;font-size:.86rem}
+table.t th{position:sticky;top:0;text-align:left;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);padding:9px 12px;font-weight:600;white-space:nowrap}
+table.t td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:top}
+table.t tr.bad td{background:var(--bad-soft)}
+table.t tr.inactive td{color:var(--muted)}
+table.t td .input{min-height:34px;padding:5px 8px;min-width:90px}
+.maprow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:900px){.maprow{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.toggle{position:relative;width:40px;height:24px;flex:none;appearance:none;background:var(--line);border-radius:99px;cursor:pointer;transition:background .15s}
+.toggle::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--surface);transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.toggle:checked{background:var(--accent)}.toggle:checked::after{left:19px}
+
+/* modal + toast */
+.modal-bg{position:fixed;inset:0;z-index:50;background:rgba(10,16,13,.45);display:grid;place-items:center;padding:16px}
+.modal{background:var(--surface);border-radius:14px;width:min(640px,100%);max-height:min(82vh,760px);display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal header{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.modal .mb{padding:16px 18px;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.modal footer{padding:12px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.pick{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:10px;font-weight:600;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
+@media (max-width:860px){.toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))}}
+
+/* A4 sheet */
+.sheets{display:flex;flex-direction:column;align-items:center;gap:22px;overflow-x:auto;padding:4px 0 10px}
+.sheet{width:794px;height:1123px;background:var(--paper);color:var(--paper-ink);box-shadow:0 2px 14px rgba(0,0,0,.14);padding:52px 56px 46px;display:flex;flex-direction:column;font-size:11.5px;line-height:1.4;flex:none;color-scheme:light}
+.sh-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid var(--paper-accent)}
+.sh-logo{display:flex;align-items:center;gap:10px}
+.sh-logo img{max-height:56px;max-width:170px}
+.sh-mark{width:46px;height:46px;border-radius:10px;background:var(--paper-accent);color:#fff;display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:16px}
+.sh-co{text-align:right;color:var(--paper-muted)}
+.sh-co b{color:var(--paper-ink);font-size:13px;display:block}
+.sh-title{display:flex;justify-content:space-between;align-items:flex-end;margin:18px 0 14px}
+.sh-title h2{font-family:var(--f-display);font-size:22px;letter-spacing:.04em;color:var(--paper-accent)}
+.sh-client{display:grid;grid-template-columns:1fr 1fr;gap:3px 24px;background:var(--paper-band);padding:12px 14px;border-radius:6px}
+.sh-client span{color:var(--paper-muted);display:inline-block;min-width:74px}
+.sh-table{width:100%;border-collapse:collapse;margin-top:12px}
+.sh-table th{background:var(--paper-accent);color:#fff;font-weight:600;text-align:left;padding:6px 7px;font-size:10.5px}
+.sh-table td{padding:6px 7px;border-bottom:1px solid var(--paper-line);vertical-align:top}
+.sh-table .cat td{background:var(--paper-band);font-weight:700;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--paper-accent)}
+.sh-table .d{color:var(--paper-muted);font-size:10.5px}
+.sh-tot{margin-left:auto;width:290px;margin-top:14px}
+.sh-tot div{display:flex;justify-content:space-between;padding:3px 0}
+.sh-tot .g{border-top:1.5px solid var(--paper-ink);margin-top:4px;padding-top:6px;font-weight:700;font-size:13px}
+.sh-words{margin-top:10px;padding:8px 10px;border:1px solid var(--paper-line);border-radius:5px;font-weight:600;font-size:10.5px}
+.sh-terms{margin-top:14px;display:grid;grid-template-columns:150px 1fr;gap:3px 12px}
+.sh-terms dt{color:var(--paper-muted)}.sh-terms dd{margin:0}
+.sh-foot{margin-top:auto;padding-top:10px;border-top:1px solid var(--paper-line);display:flex;justify-content:space-between;gap:16px;color:var(--paper-muted);font-size:10px}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <aside class="side" aria-label="Menú principal">
+    <div class="brand"><div class="brand-mark">Q</div><div><b>QuoteAI</b><small>Cotizador con IA</small></div></div>
+    <a class="btn primary" href="#nueva"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nueva cotización</a>
+    <nav class="nav" id="sidenav"></nav>
+    <div class="side-foot" id="sidefoot"></div>
+  </aside>
+  <main id="main"></main>
+</div>
+<nav class="bottombar" id="bottombar" aria-label="Menú"></nav>
+<div id="modal"></div>
+<div id="toast" class="toast" hidden></div>
+<input type="file" id="file-input" accept=".xlsx,.xls,.csv" hidden>
+<input type="file" id="logo-input" accept="image/png,image/jpeg" hidden>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script>
+"use strict";
+let DB = null;
+/* ============ utilidades ============ */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-" + Math.random().toString(36).slice(2) + Date.now().toString(36));
+const round2 = n => { const s = n < 0 ? -1 : 1; return s * Math.round((Math.abs(n) + Number.EPSILON) * 100) / 100; };
+const NF = new Intl.NumberFormat("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const NF0 = new Intl.NumberFormat("es-PE", { maximumFractionDigits: 0 });
+const sym = c => (c === "USD" ? "US$" : "S/");
+const money = (n, c) => `${sym(c)} ${NF.format(n || 0)}`;
+const pct = n => `${(Math.round((n || 0) * 10) / 10).toLocaleString("es-PE", { maximumFractionDigits: 1 })}%`;
+const fmtDate = iso => new Date(iso).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" }).replace(".", "");
+const fmtDateLong = iso => new Date(iso).toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" });
+const clone = o => JSON.parse(JSON.stringify(o));
+const slug = s => String(s || "cliente").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 40);
+
+const ic = (d, extra = "") => `<svg class="ic ${extra}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const I = {
+  home: ic('<path d="M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/>'),
+  plus: ic('<path d="M12 5v14M5 12h14"/>'),
+  box: ic('<path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/>'),
+  gear: ic('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'),
+  file: ic('<path d="M14 3H6a1 1 0 00-1 1v16a1 1 0 001 1h12a1 1 0 001-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>'),
+  sparkle: `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 2.5l1.9 5.6 5.6 1.9-5.6 1.9L11 17.5l-1.9-5.6L3.5 10l5.6-1.9z"/><path fill="currentColor" d="M18.5 14l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>`,
+  lock: ic('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>', "ic-sm"),
+  grip: ic('<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>'),
+  trash: ic('<path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"/>'),
+  copy: ic('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1"/>'),
+  download: ic('<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>'),
+  upload: ic('<path d="M12 21V9M7 14l5-5 5 5M5 3h14"/>'),
+  search: ic('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>'),
+  left: ic('<path d="M15 18l-6-6 6-6"/>'),
+  right: ic('<path d="M9 18l6-6-6-6"/>'),
+  x: ic('<path d="M6 6l12 12M18 6L6 18"/>'),
+  check: ic('<path d="M5 12l5 5 9-10"/>'),
+  open: ic('<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5"/>'),
+  alert: ic('<path d="M12 3l10 18H2zM12 10v5M12 18v.5"/>'),
+  info: ic('<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>'),
+};
+const aiTag = (t = "Sugerido por IA") => `<span class="ai-tag">${I.sparkle}${esc(t)}</span>`;
+const lockTag = (t = "Solo interno") => `<span class="lock-tag">${I.lock}${esc(t)}</span>`;
+
+/* ============ plantilla de industria (datos, no código) ============ */
+const TEMPLATE_FOOD = {
+  id: "tpl-food",
+  name: "Equipamiento gastronómico",
+  categories: ["Cocción", "Refrigeración", "Preparación", "Panadería", "Lavado", "Mobiliario acero inox", "Cafetería"],
+  chips: ["Cocción", "Refrigeración", "Preparación", "Lavado", "Mobiliario acero inox", "Panadería", "Cafetería"],
+  attributes: [
+    { key: "energy", label: "Energía", values: ["gas", "eléctrico", "leña", "no aplica"] },
+    { key: "voltage", label: "Voltaje", values: ["220V", "380V"] },
+    { key: "capacidad", label: "Capacidad" }, { key: "dimensiones", label: "Dimensiones (cm)" }, { key: "potencia", label: "Potencia (kW)" }, { key: "modelo", label: "Modelo" },
+  ],
+  profileQuestions: [
+    { id: "businessType", label: "Tipo de negocio", type: "cards", required: true,
+      options: ["Restaurante", "Pollería", "Cevichería", "Chifa", "Panadería/Pastelería", "Cafetería", "Hotel", "Comedor industrial/concesionario", "Dark kitchen", "Otro"] },
+    { id: "project", label: "Proyecto", type: "single", options: ["Nuevo local", "Ampliación", "Reemplazo de equipos"] },
+    { id: "capacity", label: "Capacidad", type: "number", unit: "personas", hint: "Aforo (asientos) o comensales por día" },
+    { id: "service", label: "Tipo de servicio", type: "multi", options: ["Carta", "Menú", "Buffet", "Delivery"] },
+    { id: "energy", label: "Energía disponible", type: "single", options: ["Gas GLP", "Gas natural", "Solo electricidad", "Mixto", "No sé"] },
+    { id: "electricity", label: "Electricidad", type: "single", options: ["Monofásica 220V", "Trifásica 220V", "Trifásica 380V", "No sé"] },
+    { id: "area", label: "Área de cocina", type: "number", unit: "m²", optional: true },
+    { id: "budget", label: "Presupuesto referencial", type: "money", optional: true, hint: "Se usa para priorizar equipos de menor costo" },
+  ],
+  keywordRules: [
+    { re: "cocina caliente|fre[ií]r|fritur|plancha|cocci[oó]n|hornilla|guiso|salte|parrilla|wok|brasa", cat: "Cocción" },
+    { re: "fr[ií]o|congel|bebida|refrig|conserv|helad|hielo", cat: "Refrigeración" },
+    { re: "\\bpan\\b|panader|masa|pasteler|reposter|hornear", cat: "Panadería" },
+    { re: "lavar|lavado|lavaplatos|lavavajilla", cat: "Lavado" },
+    { re: "prepar|picar|cortar|licu|procesa|pelar|moler", cat: "Preparación" },
+    { re: "mesa de trabajo|acero inox|estante|mobiliario", cat: "Mobiliario acero inox" },
+    { re: "caf[eé]|espresso|barista|cafeter", cat: "Cafetería" },
+  ],
+  businessDefaults: {
+    "Panadería/Pastelería": ["Panadería", "Refrigeración"], "Cafetería": ["Cafetería", "Refrigeración", "Preparación"],
+    "Pollería": ["Cocción", "Refrigeración", "Preparación"], "Cevichería": ["Refrigeración", "Preparación", "Cocción"],
+    "Hotel": ["Cocción", "Refrigeración", "Lavado"], "Comedor industrial/concesionario": ["Cocción", "Refrigeración", "Lavado", "Mobiliario acero inox"],
+    "Chifa": ["Cocción", "Refrigeración"],
+  },
+};
+
+/* ============ catálogo de demostración (costos referenciales sin IGV) ============ */
+// [sku, nombre, descripción, categoría, marca, costo, moneda, energía, voltaje, atributos, tags, activo]
+const DEMO = [
+  ["COC-NAC4", "Cocina industrial 4 hornillas a gas", "Hornillas de 3 coronas, parrillas de fierro fundido, estructura de acero inox 304.", "Cocción", "Fabricación nacional", 820, "USD", "gas", "", { dimensiones: "80 × 80 × 85" }, "cocina-4"],
+  ["COC-IR4", "Cocina industrial 4 hornillas a gas con horno", "Quemadores abiertos de 30 000 BTU y horno de 26\" con termostato.", "Cocción", "Imperial", 1690, "USD", "gas", "", { modelo: "IR-4", dimensiones: "61 × 79 × 142" }, "cocina-4"],
+  ["COC-NAC6", "Cocina industrial 6 hornillas a gas", "Hornillas de 3 coronas, parrillas de fierro fundido, acero inox 304.", "Cocción", "Fabricación nacional", 1200, "USD", "gas", "", { dimensiones: "120 × 80 × 85" }, "cocina-6"],
+  ["COC-IR6", "Cocina industrial 6 hornillas a gas con horno", "Seis quemadores de 32 000 BTU y horno de 26\" con termostato.", "Cocción", "Imperial", 2480, "USD", "gas", "", { modelo: "IR-6", dimensiones: "91 × 79 × 142" }, "cocina-6"],
+  ["COC-FAGE4", "Cocina eléctrica 4 placas con horno", "Placas de 2.6 kW y horno GN 2/1 con control independiente.", "Cocción", "Fagor", 3150, "USD", "eléctrico", "380V", { modelo: "Kore 700 CE7-41", potencia: "17 kW" }, "cocina-e"],
+  ["COC-IND2", "Cocina de inducción 2 zonas", "Dos zonas de 3.5 kW en vitrocerámica, para línea de salteado.", "Cocción", "Fagor", 1290, "USD", "eléctrico", "220V", { potencia: "7 kW" }, "cocina-e"],
+  ["FRE-GF40", "Freidora a gas 40 lb", "Tanque de acero inox, 105 000 BTU, termostato de 93 a 204 °C, 2 canastillas.", "Cocción", "Frymaster", 1540, "USD", "gas", "", { modelo: "GF40", capacidad: "18 kg de aceite" }, "freidora"],
+  ["FRE-WAR15", "Freidora eléctrica 15 lb", "Tanque desmontable de 3.3 kW para volúmenes bajos.", "Cocción", "Waring", 650, "USD", "eléctrico", "220V", { modelo: "WDF1550", capacidad: "7 kg de aceite" }, "freidora"],
+  ["PLA-VUL36", "Plancha a gas 36\"", "Placa de acero de 1\", 3 quemadores en U y control termostático.", "Cocción", "Vulcan", 1890, "USD", "gas", "", { modelo: "VCRG36-T" }, "plancha"],
+  ["PLA-STA24", "Plancha eléctrica 24\"", "Placa de acero de 1/2\", 4.8 kW, controles termostáticos.", "Cocción", "Star", 1180, "USD", "eléctrico", "220V", { modelo: "524TA" }, "plancha"],
+  ["COC-WOK2", "Cocina china 2 hornillas a gas con chorro", "Quemadores de alta presión para wok, poza de agua y caño giratorio.", "Cocción", "Fabricación nacional", 3200, "PEN", "gas", "", {}, "wok"],
+  ["HOR-RAT61", "Horno combinado iCombi Pro 6-1/1", "Vapor y convección, 6 bandejas GN 1/1, limpieza automática.", "Cocción", "Rational", 15800, "USD", "eléctrico", "380V", { potencia: "10.8 kW", capacidad: "30 a 80 platos por servicio" }, "horno-combi"],
+  ["HOR-UNX5", "Horno combinado ChefTop 5 GN 1/1", "Vapor y convección, 5 bandejas, pantalla táctil.", "Cocción", "Unox", 8200, "USD", "eléctrico", "380V", { modelo: "XEVC-0511-EPR", potencia: "9.3 kW" }, "horno-combi"],
+  ["HOR-BLO1", "Horno de convección a gas 1 cámara", "Cámara para 5 bandejas, 55 000 BTU, puertas dobles de vidrio.", "Cocción", "Blodgett", 6900, "USD", "gas", "", { modelo: "DFG-100" }, "horno-conv"],
+  ["MAR-100G", "Marmita a gas 100 L con volteo", "Doble fondo con aceite térmico, volteo manual, acero inox 304.", "Cocción", "Fabricación nacional", 6400, "PEN", "gas", "", { capacidad: "100 L" }, "marmita"],
+  ["SAL-IMP36", "Salamandra a gas 36\"", "Gratinador de pared con quemadores infrarrojos.", "Cocción", "Imperial", 1050, "USD", "gas", "", { modelo: "ISB-36" }, "salamandra"],
+  ["BRA-G40", "Horno brasero rotativo a gas 40 pollos", "Rotación con motorreductor, quemadores laterales y vidrio templado.", "Cocción", "Fabricación nacional", 7800, "PEN", "gas", "", { capacidad: "40 pollos por tanda" }, "brasa"],
+  ["BRA-L60", "Horno brasero a leña y carbón 60 pollos", "Cámara de ladrillo refractario revestida en acero inox.", "Cocción", "Fabricación nacional", 6900, "PEN", "leña", "", { capacidad: "60 pollos por tanda" }, "brasa"],
+  ["BMA-4D", "Mesa caliente baño maría 4 depósitos", "Depósitos GN 1/1, resistencia de 2 kW y repisa inferior.", "Cocción", "Fabricación nacional", 2350, "PEN", "eléctrico", "220V", {}, "bano-maria"],
+  ["COC-OLD6", "Cocina 6 hornillas a gas (modelo 2024)", "Modelo descontinuado.", "Cocción", "Fabricación nacional", 1050, "USD", "gas", "", {}, "cocina-6", false],
+  ["REF-T23", "Refrigeradora vertical 1 puerta", "Acero inox, 651 L, rango de 0.5 a 3.3 °C, refrigerante R290.", "Refrigeración", "True", 2650, "USD", "eléctrico", "220V", { modelo: "T-23" }, "ref-1p"],
+  ["REF-NAC2P", "Refrigeradora vertical 2 puertas", "Acero inox 304, 1 200 L, control digital y 4 parrillas.", "Refrigeración", "Fabricación nacional", 3800, "PEN", "eléctrico", "220V", { capacidad: "1 200 L" }, "ref-2p"],
+  ["REF-T49", "Refrigeradora vertical 2 puertas", "Acero inox, 1 376 L, puertas con cierre automático.", "Refrigeración", "True", 3980, "USD", "eléctrico", "220V", { modelo: "T-49" }, "ref-2p"],
+  ["CON-T49F", "Congeladora vertical 2 puertas", "1 376 L, hasta -22 °C, deshielo automático.", "Refrigeración", "True", 4750, "USD", "eléctrico", "220V", { modelo: "T-49F" }, "cong-v"],
+  ["CON-CX300", "Congeladora horizontal 300 L", "Tapa abatible, -18 °C, uso comercial.", "Refrigeración", "Coldex", 1690, "PEN", "eléctrico", "220V", {}, "cong-h"],
+  ["MRF-T48", "Mesa refrigerada 2 puertas 1.22 m", "Cubierta de acero inox para trabajo, 340 L.", "Refrigeración", "True", 2980, "USD", "eléctrico", "220V", { modelo: "TSSU-48-12" }, "mesa-ref"],
+  ["MRF-PZ67", "Mesa refrigerada para pizza 1.70 m", "Riel para 9 insertos y tabla de picar de polietileno.", "Refrigeración", "True", 5100, "USD", "eléctrico", "220V", { modelo: "TPP-AT-67" }, "mesa-pizza"],
+  ["VIS-VR17", "Visicooler 1 puerta 480 L", "Exhibidor de bebidas con iluminación LED, de 2 a 6 °C.", "Refrigeración", "Imbera", 3950, "PEN", "eléctrico", "220V", { modelo: "VR-17" }, "visi"],
+  ["VIS-VR35", "Visicooler 2 puertas 1 000 L", "Exhibidor de bebidas de 2 puertas con iluminación LED.", "Refrigeración", "Imbera", 7200, "PEN", "eléctrico", "220V", { modelo: "VR-35" }, "visi"],
+  ["HIE-UDF14", "Máquina de hielo 63 kg/día", "Cubo pequeño, depósito integrado de 41 kg, condensación por aire.", "Refrigeración", "Manitowoc", 3350, "USD", "eléctrico", "220V", { modelo: "UDF0140A" }, "hielo"],
+  ["VIT-PAS12", "Vitrina refrigerada pastelera 1.20 m", "Vidrio curvo, 3 niveles, de 2 a 8 °C.", "Refrigeración", "Fabricación nacional", 4600, "PEN", "eléctrico", "220V", {}, "vitrina-pas"],
+  ["PRO-R2N", "Procesador de alimentos 2.9 L", "Cuba de acero inox y cortadora de verduras con 2 discos.", "Preparación", "Robot Coupe", 1480, "USD", "eléctrico", "220V", { modelo: "R2N" }, "procesador"],
+  ["COR-CL50", "Cortadora de verduras", "Hasta 250 kg/h, incluye 5 discos de corte.", "Preparación", "Robot Coupe", 3250, "USD", "eléctrico", "220V", { modelo: "CL50" }, "cortadora"],
+  ["LIC-NAC10", "Licuadora industrial 10 L volcable", "Vaso de acero inox y motor de 1.5 HP.", "Preparación", "Fabricación nacional", 1480, "PEN", "eléctrico", "220V", {}, "licuadora"],
+  ["LIC-CB15", "Licuadora industrial 4 L", "Motor de 3.75 HP y vaso de acero inox.", "Preparación", "Waring", 1190, "USD", "eléctrico", "220V", { modelo: "CB15" }, "licuadora"],
+  ["REB-R300", "Rebanadora de embutidos 300 mm", "Cuchilla de acero templado con afilador integrado.", "Preparación", "Torrey", 1120, "USD", "eléctrico", "220V", { modelo: "R-300" }, "rebanadora"],
+  ["MOL-M22", "Moledora de carne #22", "Motor de 1.5 HP, hasta 250 kg/h.", "Preparación", "Torrey", 980, "USD", "eléctrico", "220V", { modelo: "M-22 R2" }, "moledora"],
+  ["EXP-S10", "Exprimidor de cítricos", "Exprimidor eléctrico de palanca para limón y naranja.", "Preparación", "Santos", 860, "USD", "eléctrico", "220V", { modelo: "N.º 10" }, "exprimidor"],
+  ["PEL-NAC15", "Peladora de papas 15 kg", "Disco abrasivo, ciclo de 2 a 3 minutos.", "Preparación", "Fabricación nacional", 4300, "PEN", "eléctrico", "220V", {}, "peladora"],
+  ["BAL-T10", "Balanza digital 10 kg", "Plataforma de acero inox, precisión de 2 g.", "Preparación", "Torrey", 420, "PEN", "eléctrico", "220V", { modelo: "L-EQ 10" }, "balanza"],
+  ["VAC-HK42", "Envasadora al vacío de mesa", "Cámara de 42 cm y bomba de 16 m³/h.", "Preparación", "Henkelman", 2400, "USD", "eléctrico", "220V", { modelo: "Boxer 42" }, "vacio"],
+  ["AMA-NV25", "Amasadora espiral 25 kg", "Bol y espiral de acero inox, 2 velocidades.", "Panadería", "Nova", 4900, "USD", "eléctrico", "380V", { capacidad: "25 kg de harina" }, "amasadora"],
+  ["AMA-NV50", "Amasadora espiral 50 kg", "Bol y espiral de acero inox, 2 velocidades, temporizador.", "Panadería", "Nova", 7300, "USD", "eléctrico", "380V", { capacidad: "50 kg de harina" }, "amasadora-g"],
+  ["BAT-HL200", "Batidora planetaria 20 L", "3 velocidades, incluye batidor, gancho y paleta.", "Panadería", "Hobart", 6700, "USD", "eléctrico", "220V", { modelo: "HL200" }, "batidora"],
+  ["HOR-NVR18", "Horno rotativo a gas 18 bandejas", "Coche rotativo para bandejas de 65 × 45 cm, vaporizador.", "Panadería", "Nova", 19800, "USD", "gas", "220V", { capacidad: "18 bandejas" }, "horno-rot"],
+  ["HOR-PIS3", "Horno de piso a gas 3 cámaras", "Piso refractario, 9 latas de 65 × 45 cm.", "Panadería", "Fabricación nacional", 18500, "PEN", "gas", "", { capacidad: "9 latas" }, "horno-piso"],
+  ["CFE-NV36", "Cámara de fermentación 36 bandejas", "Control de humedad y temperatura, puertas de vidrio.", "Panadería", "Nova", 3900, "USD", "eléctrico", "220V", {}, "fermentacion"],
+  ["DIV-NV36", "Divisora de masa 36 piezas", "Divisora manual de acero inox.", "Panadería", "Nova", 2350, "USD", "no aplica", "", {}, "divisora"],
+  ["LAM-NV50", "Laminadora de masa 50 cm", "Rodillos de 50 cm, mesas plegables.", "Panadería", "Nova", 5600, "USD", "eléctrico", "220V", {}, "laminadora"],
+  ["LVV-AM15", "Lavavajillas de capota", "55 racks por hora, booster incorporado.", "Lavado", "Hobart", 13600, "USD", "eléctrico", "380V", { modelo: "AM15" }, "lavavajillas-cap"],
+  ["LVV-CO402", "Lavavajillas bajo mesa", "30 racks por hora, cesta de 40 × 40 cm.", "Lavado", "Fagor", 3950, "USD", "eléctrico", "220V", { modelo: "CO-402" }, "lavavajillas-bm"],
+  ["LAV-2P140", "Lavadero 2 pozas 1.40 m", "Acero inox 304, pozas de 50 × 50 cm.", "Lavado", "Fabricación nacional", 1480, "PEN", "no aplica", "", {}, "lavadero-2"],
+  ["LAV-1P100", "Lavadero 1 poza con escurridor 1.00 m", "Acero inox 304, escurridor lateral.", "Lavado", "Fabricación nacional", 890, "PEN", "no aplica", "", {}, "lavadero-1"],
+  ["DUC-B0133", "Ducha de pre-lavado", "Grifería de pared con ducha y resorte.", "Lavado", "T&S", 430, "USD", "no aplica", "", { modelo: "B-0133-B" }, "ducha"],
+  ["TRA-G60", "Trampa de grasa 60 L", "Acero inox con canastilla y tapa hermética.", "Lavado", "Fabricación nacional", 990, "PEN", "no aplica", "", {}, "trampa"],
+  ["MES-T180", "Mesa de trabajo 1.80 m con repisa", "Acero inox 304, plancha de 1.2 mm, patas regulables.", "Mobiliario acero inox", "Fabricación nacional", 1290, "PEN", "no aplica", "", { dimensiones: "180 × 70 × 90" }, "mesa-trabajo"],
+  ["MES-T120", "Mesa de trabajo 1.20 m con repisa", "Acero inox 304, plancha de 1.2 mm, patas regulables.", "Mobiliario acero inox", "Fabricación nacional", 980, "PEN", "no aplica", "", { dimensiones: "120 × 70 × 90" }, "mesa-trabajo-s"],
+  ["MES-R150", "Mesa de trabajo 1.50 m con respaldo", "Respaldo sanitario de 10 cm, repisa inferior.", "Mobiliario acero inox", "Fabricación nacional", 1190, "PEN", "no aplica", "", {}, "mesa-respaldo"],
+  ["EST-4N120", "Estante 4 niveles 1.20 m", "Acero inox, carga de 80 kg por nivel.", "Mobiliario acero inox", "Fabricación nacional", 820, "PEN", "no aplica", "", {}, "estante"],
+  ["CAR-S3N", "Carro de servicio 3 niveles", "Ruedas giratorias con freno.", "Mobiliario acero inox", "Fabricación nacional", 650, "PEN", "no aplica", "", {}, "carro"],
+  ["REP-P120", "Repisa de pared 1.20 m", "Acero inox con soportes.", "Mobiliario acero inox", "Fabricación nacional", 340, "PEN", "no aplica", "", {}, "repisa"],
+  ["CAR-P18", "Carro panadero 18 bandejas", "Para bandejas de 65 × 45 cm.", "Mobiliario acero inox", "Fabricación nacional", 1150, "PEN", "no aplica", "", {}, "carro-pan"],
+  ["CAF-LMLC2", "Máquina de espresso 2 grupos", "Calderas separadas, grupos saturados, para alto volumen.", "Cafetería", "La Marzocco", 12400, "USD", "eléctrico", "220V", { modelo: "Linea Classic S" }, "espresso"],
+  ["CAF-NSA2", "Máquina de espresso 2 grupos", "Caldera de 11 L, dosificación volumétrica.", "Cafetería", "Nuova Simonelli", 5900, "USD", "eléctrico", "220V", { modelo: "Appia Life" }, "espresso"],
+  ["MOL-MZSJ", "Molino de café", "Muelas planas de 64 mm, dosificación a demanda.", "Cafetería", "Mazzer", 1350, "USD", "eléctrico", "220V", { modelo: "Super Jolly V Pro" }, "molino"],
+  ["LIC-VMX", "Licuadora de barra", "Programas automáticos y cubierta insonorizada.", "Cafetería", "Vitamix", 1150, "USD", "eléctrico", "220V", { modelo: "Drink Machine Advance" }, "licuadora-barra"],
+];
+function demoProducts() {
+  return DEMO.map(r => ({
+    id: uid(), sku: r[0], name: r[1], description: r[2], category: r[3], brand: r[4], unit: "und", cost: r[5], currency: r[6],
+    attributes: Object.assign({ energy: r[7] }, r[8] ? { voltage: r[8] } : {}, r[9]), tags: r[10].split(","), active: r[11] !== false,
+  }));
+}
+// tags para catálogos importados (cuando no traen etiquetas)
+const ROLE_RULES = [[/6 hornillas/i, "cocina-6"], [/4 hornillas/i, "cocina-4"], [/cocina el[eé]ctrica|inducci[oó]n/i, "cocina-e"], [/freidora/i, "freidora"], [/plancha/i, "plancha"], [/wok|china/i, "wok"],
+  [/horno combinado/i, "horno-combi"], [/horno de convecci/i, "horno-conv"], [/marmita/i, "marmita"], [/salamandra/i, "salamandra"], [/braser|pollos/i, "brasa"], [/ba[ñn]o mar[ií]a/i, "bano-maria"],
+  [/refrigeradora.*1 puerta/i, "ref-1p"], [/refrigeradora/i, "ref-2p"], [/congeladora vertical/i, "cong-v"], [/congeladora/i, "cong-h"], [/mesa refrigerada.*pizza/i, "mesa-pizza"], [/mesa refrigerada/i, "mesa-ref"],
+  [/visicooler|exhibidor de bebidas/i, "visi"], [/hielo/i, "hielo"], [/vitrina/i, "vitrina-pas"], [/procesador/i, "procesador"], [/cortadora/i, "cortadora"], [/licuadora de barra/i, "licuadora-barra"], [/licuadora/i, "licuadora"],
+  [/rebanadora/i, "rebanadora"], [/moledora/i, "moledora"], [/exprimidor/i, "exprimidor"], [/peladora/i, "peladora"], [/balanza/i, "balanza"], [/amasadora/i, "amasadora"], [/batidora/i, "batidora"],
+  [/horno rotativo/i, "horno-rot"], [/horno de piso/i, "horno-piso"], [/fermentaci/i, "fermentacion"], [/divisora/i, "divisora"], [/lavavajillas.*capota/i, "lavavajillas-cap"], [/lavavajillas/i, "lavavajillas-bm"],
+  [/lavadero.*2/i, "lavadero-2"], [/lavadero/i, "lavadero-1"], [/ducha/i, "ducha"], [/trampa/i, "trampa"], [/mesa de trabajo/i, "mesa-trabajo"], [/estante/i, "estante"], [/carro panadero/i, "carro-pan"], [/carro/i, "carro"],
+  [/espresso/i, "espresso"], [/molino/i, "molino"]];
+const autoTags = name => { for (const [re, t] of ROLE_RULES) if (re.test(name)) return [t]; return []; };
+
+/* ============ precios (sección 7) — funciones puras ============ */
+const pricing = {
+  convert(cost, from, to, rate) { if (from === to) return round2(cost); return to === "PEN" ? round2(cost * rate) : round2(cost / rate); },
+  unitPrice(unitCost, margin) { return round2(unitCost * (1 + margin / 100)); },
+  marginFrom(unitPrice, unitCost) { return unitCost ? (unitPrice / unitCost - 1) * 100 : 0; },
+  recalcLine(q, l) {
+    l.unitCost = pricing.convert(l.listCost, l.listCurrency, q.currency, q.exchangeRate);
+    l.margin = l.marginOverride != null ? l.marginOverride : q.defaultMargin;
+    l.unitPrice = pricing.unitPrice(l.unitCost, l.margin);
+    l.lineTotal = round2(l.quantity * l.unitPrice);
+    return l;
+  },
+  recalc(q) { q.lines.forEach(l => pricing.recalcLine(q, l)); return q; },
+  totals(q, lines = q.lines) {
+    const igvPct = DB.settings.igv;
+    const subtotal = round2(lines.reduce((s, l) => s + l.lineTotal, 0));
+    const descuento = round2(subtotal * (q.discount || 0) / 100);
+    const valorVenta = round2(subtotal - descuento);
+    const igv = round2(valorVenta * igvPct / 100);
+    const total = round2(valorVenta + igv);
+    const totalCost = round2(lines.reduce((s, l) => s + l.quantity * l.unitCost, 0));
+    const profit = round2(valorVenta - totalCost);
+    const avgMargin = totalCost ? profit / totalCost * 100 : 0;
+    return { subtotal, descuento, valorVenta, igv, igvPct, total, totalCost, profit, avgMargin, items: lines.reduce((s, l) => s + l.quantity, 0) };
+  },
+};
+
+/* ============ importe en letras ============ */
+function numeroALetras(n) {
+  const U = ["", "UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE", "DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISÉIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE",
+    "VEINTE", "VEINTIUNO", "VEINTIDÓS", "VEINTITRÉS", "VEINTICUATRO", "VEINTICINCO", "VEINTISÉIS", "VEINTISIETE", "VEINTIOCHO", "VEINTINUEVE"];
+  const D = ["", "", "", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"];
+  const C = ["", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"];
+  const dec = x => (x < 30 ? U[x] : D[Math.floor(x / 10)] + (x % 10 ? " Y " + U[x % 10] : ""));
+  const cen = x => (x === 100 ? "CIEN" : ((C[Math.floor(x / 100)] + " " + dec(x % 100)).trim()));
+  const apoc = s => s.replace(/VEINTIUNO$/, "VEINTIÚN").replace(/UNO$/, "UN");
+  function words(x) {
+    if (x === 0) return "CERO";
+    const mill = Math.floor(x / 1e6), miles = Math.floor((x % 1e6) / 1000), rest = x % 1000;
+    let out = [];
+    if (mill) out.push(mill === 1 ? "UN MILLÓN" : apoc(words(mill)) + " MILLONES");
+    if (miles) out.push(miles === 1 ? "MIL" : apoc(cen(miles)) + " MIL");
+    if (rest) out.push(cen(rest));
+    return out.join(" ");
+  }
+  return words(n);
+}
+function importeEnLetras(total, cur) {
+  const ent = Math.floor(round2(total)), cts = Math.round((round2(total) - ent) * 100);
+  return `SON: ${numeroALetras(ent)} CON ${String(cts).padStart(2, "0")}/100 ${cur === "USD" ? "DÓLARES AMERICANOS" : "SOLES"}`;
+}
+
+/* ============ almacenamiento (repositorio sobre localStorage) ============ */
+const KEY = "quoteai.v1";
+let memoryOnly = false;
+function loadDB() { try { const s = localStorage.getItem(KEY); return s ? JSON.parse(s) : null; } catch (e) { memoryOnly = true; return null; } }
+function saveDB() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) { memoryOnly = true; } }
+const store = {
+  products: { all: () => DB.products, get: id => DB.products.find(p => p.id === id), bySku: s => DB.products.find(p => p.sku === s) },
+  clients: { all: () => DB.clients, get: id => DB.clients.find(c => c.id === id),
+    upsert(c) { const i = DB.clients.findIndex(x => x.id === c.id); if (i >= 0) DB.clients[i] = c; else DB.clients.push(c); saveDB(); return c; } },
+  quotes: { all: () => DB.quotes, get: id => DB.quotes.find(q => q.id === id),
+    upsert(q) { q.updatedAt = new Date().toISOString(); const i = DB.quotes.findIndex(x => x.id === q.id); if (i >= 0) DB.quotes[i] = q; else DB.quotes.push(q); saveDB(); return q; } },
+  settings: { get: () => DB.settings, set(s) { DB.settings = s; saveDB(); } },
+};
+function nextNumber() { const s = DB.settings; const n = s.nextNumber++; saveDB(); return `COT-${new Date().getFullYear()}-${String(n).padStart(4, "0")}`; }
+
+function makeLine(q, p, qty, opts = {}) {
+  const l = { id: uid(), productId: p.id, sku: p.sku, name: p.name, description: p.description || "", brand: p.brand || "", unit: p.unit || "und", category: p.category,
+    attributes: clone(p.attributes || {}), listCost: p.cost, listCurrency: p.currency, quantity: qty, marginOverride: opts.margin ?? null,
+    aiReason: opts.reason || "", aiConfidence: opts.confidence || "", source: opts.source || "manual" };
+  return pricing.recalcLine(q, l);
+}
+function newQuote(over = {}) {
+  const s = DB.settings, now = new Date().toISOString();
+  return Object.assign({ id: uid(), number: "", status: "Borrador", clientId: null, client: emptyClient(), industryTemplateId: TEMPLATE_FOOD.id,
+    businessProfile: {}, needsText: "", chips: [], aiConversation: [], aiAnswers: {}, aiPending: null, aiRound: 0, aiProposal: null, stale: false,
+    currency: s.defaultCurrency || "PEN", exchangeRate: s.exchangeRate, defaultMargin: s.defaultMargin, lines: [], discount: 0,
+    validityDays: s.validityDays, deliveryTime: s.deliveryTime, paymentTerms: s.paymentTerms, warranty: s.warranty, deliveryPlace: s.deliveryPlace, notes: "",
+    step: 1, maxStep: 1, ui3: "a", createdAt: now, updatedAt: now }, over);
+}
+const emptyClient = () => ({ id: null, name: "", documentType: "RUC", documentNumber: "", contactName: "", phone: "", email: "", address: "", city: "Lima" });
+
+/* ============ datos de demostración ============ */
+function seedDB() {
+  const settings = { companyName: "Equipos Gastronómicos Pacífico S.A.C.", ruc: "20612345678", address: "Av. Nicolás Arriola 1450, La Victoria, Lima", phone: "(01) 326-4580 · 987 112 340",
+    email: "ventas@egpacifico.pe", logo: "", exchangeRate: 3.436, igv: 18, defaultMargin: 30, validityDays: 15, paymentTerms: "50% de adelanto y 50% contra entrega",
+    deliveryTime: "7 a 10 días hábiles", warranty: "12 meses por defectos de fabricación", deliveryPlace: "Lima Metropolitana, puesto en obra", seller: "Diego Morales",
+    bankLine: "BCP Soles 191-2456789-0-37 · CCI 00219100245678903758", nextNumber: 41, defaultCurrency: "PEN" };
+  const clients = [
+    ["Inversiones Gastronómicas Barranco S.A.C.", "RUC", "20605873214", "Carla Mendoza", "987 654 321", "cmendoza@igbarranco.pe", "Av. Grau 315, Barranco", "Lima"],
+    ["Pollería El Leñador E.I.R.L.", "RUC", "20608451927", "Jorge Huamaní", "956 221 408", "pedidos@ellenador.pe", "Av. Carlos Izaguirre 1120, Los Olivos", "Lima"],
+    ["Cevichería Mar Bravo S.A.C.", "RUC", "20610294736", "Lucía Paredes", "944 718 230", "lparedes@marbravo.pe", "Av. Huaylas 452, Chorrillos", "Lima"],
+    ["Panificadora Santa Rosa S.A.C.", "RUC", "20455873102", "Miguel Zegarra", "959 300 174", "compras@santarosa.com.pe", "Calle Mercaderes 218, Cercado", "Arequipa"],
+    ["Hotel Mirador del Valle S.A.C.", "RUC", "20490317285", "Andrea Quispe", "984 512 066", "aquispe@miradordelvalle.pe", "Av. Ferrocarril s/n, Urubamba", "Cusco"],
+    ["Concesionaria Alimentaria Sur S.A.C.", "RUC", "20534781296", "Raúl Ventura", "956 870 233", "rventura@casur.pe", "Panamericana Sur km 302, Subtanjalla", "Ica"],
+    ["Chifa Dragón Dorado S.A.C.", "RUC", "20601783459", "Wilson Chang", "998 140 572", "wchang@dragondorado.pe", "Av. La Marina 2340, San Miguel", "Lima"],
+    ["Café Tostado Mirlo E.I.R.L.", "RUC", "20611547820", "Sofía Ríos", "976 330 915", "hola@cafemirlo.pe", "Calle Berlín 360, Miraflores", "Lima"],
+    ["Rosa Quispe Huamán", "DNI", "45781236", "Rosa Quispe", "949 802 117", "rosa.quispe@gmail.com", "Jr. Pizarro 540, Centro", "Trujillo"],
+  ].map(r => ({ id: uid(), name: r[0], documentType: r[1], documentNumber: r[2], contactName: r[3], phone: r[4], email: r[5], address: r[6], city: r[7] }));
+  DB = { settings, products: demoProducts(), clients, quotes: [], template: clone(TEMPLATE_FOOD) };
+  const P = sku => DB.products.find(p => p.sku === sku);
+  const mk = (num, ci, date, status, cur, rate, profile, lines, disc = 0, needs = "") => {
+    const q = newQuote({ number: `COT-2026-${String(num).padStart(4, "0")}`, status, clientId: clients[ci].id, client: clone(clients[ci]), currency: cur, exchangeRate: rate,
+      businessProfile: profile, needsText: needs, discount: disc, step: 4, maxStep: 4, ui3: "c", createdAt: date, updatedAt: date });
+    q.lines = lines.map(([sku, qty, m, src]) => makeLine(q, P(sku), qty, { margin: m ?? null, source: src || "ai", confidence: "alta",
+      reason: src === "manual" ? "" : `Recomendado para ${String(profile.businessType || "negocio").toLowerCase()} de ${profile.capacity || "—"} personas.` }));
+    DB.quotes.push(q);
+  };
+  mk(31, 4, "2026-09-08T15:20:00-05:00", "Aceptada", "USD", 3.47, { businessType: "Hotel", capacity: 120, energy: "Gas GLP", electricity: "Trifásica 380V" },
+    [["HOR-RAT61", 1], ["COC-IR6", 1], ["REF-T49", 2], ["CON-T49F", 1], ["LVV-AM15", 1], ["MES-T180", 3]], 3);
+  mk(32, 3, "2026-09-15T10:05:00-05:00", "Rechazada", "PEN", 3.46, { businessType: "Panadería/Pastelería", capacity: 300, energy: "Gas GLP", electricity: "Trifásica 380V" },
+    [["AMA-NV50", 1], ["HOR-NVR18", 1], ["CFE-NV36", 1], ["DIV-NV36", 1], ["CAR-P18", 4]]);
+  mk(33, 7, "2026-09-26T17:40:00-05:00", "Aceptada", "PEN", 3.45, { businessType: "Cafetería", capacity: 40, energy: "Solo electricidad", electricity: "Monofásica 220V" },
+    [["CAF-NSA2", 1], ["MOL-MZSJ", 2], ["LIC-VMX", 1], ["VIT-PAS12", 1], ["MRF-T48", 1]]);
+  mk(34, 0, "2026-10-02T11:30:00-05:00", "Aceptada", "PEN", 3.44, { businessType: "Restaurante", project: "Nuevo local", capacity: 80, service: ["Carta"], energy: "Gas GLP", electricity: "Trifásica 220V" },
+    [["COC-NAC6", 1], ["REF-NAC2P", 2, 25], ["FRE-GF40", 1], ["PLA-VUL36", 1], ["MRF-T48", 1], ["LAV-2P140", 1], ["MES-T180", 2]], 5,
+    "Necesito equipar la cocina caliente y la zona de frío para un restaurante de 80 personas.");
+  mk(35, 1, "2026-10-06T09:15:00-05:00", "Enviada", "PEN", 3.44, { businessType: "Pollería", capacity: 150, energy: "Gas GLP", electricity: "Trifásica 220V" },
+    [["BRA-G40", 2], ["FRE-GF40", 2], ["PEL-NAC15", 1], ["REF-NAC2P", 2], ["CON-CX300", 1], ["LAV-2P140", 1]]);
+  mk(36, 5, "2026-10-09T16:00:00-05:00", "Aceptada", "PEN", 3.43, { businessType: "Comedor industrial/concesionario", capacity: 400, energy: "Gas natural", electricity: "Trifásica 380V" },
+    [["MAR-100G", 2], ["COC-IR6", 2], ["HOR-BLO1", 1], ["CON-T49F", 2], ["REF-T49", 3], ["LVV-AM15", 1], ["BMA-4D", 3], ["MES-T180", 4]], 4);
+  mk(37, 6, "2026-10-14T12:45:00-05:00", "Rechazada", "PEN", 3.43, { businessType: "Chifa", capacity: 90, energy: "Gas GLP", electricity: "Trifásica 220V" },
+    [["COC-WOK2", 2], ["COC-NAC4", 1], ["REF-NAC2P", 2], ["FRE-GF40", 1], ["MES-T180", 2]]);
+  mk(38, 2, "2026-10-19T10:10:00-05:00", "Enviada", "PEN", 3.43, { businessType: "Cevichería", capacity: 60, energy: "Gas GLP", electricity: "Monofásica 220V" },
+    [["EXP-S10", 2], ["COR-CL50", 1], ["MRF-T48", 2], ["HIE-UDF14", 1], ["COC-NAC4", 1], ["FRE-GF40", 1]]);
+  mk(39, 8, "2026-10-23T18:25:00-05:00", "Enviada", "USD", 3.436, { businessType: "Cafetería", capacity: 30, energy: "Solo electricidad", electricity: "Monofásica 220V" },
+    [["CAF-NSA2", 1], ["MOL-MZSJ", 1], ["VIS-VR17", 1], ["LIC-VMX", 1]]);
+  mk(40, 4, "2026-10-26T13:00:00-05:00", "Borrador", "USD", 3.436, { businessType: "Hotel", project: "Ampliación", capacity: 60, energy: "Gas GLP", electricity: "Trifásica 380V" },
+    [["HOR-UNX5", 1], ["MRF-T48", 1], ["LVV-CO402", 1]]);
+  DB.ui = { currentQuoteId: null };
+  saveDB();
+  return DB;
+}
+
+/* ============ IA simulada (aiService) ============ */
+const aiDelay = () => new Promise(r => setTimeout(r, 800 + Math.random() * 700));
+const aiService = {
+  async getClarifyingQuestions(ctx) { await aiDelay(); return mockQuestions(ctx); },
+  async recommendProducts(ctx) { await aiDelay(); return mockRecommend(ctx); },
+};
+function detectCategories(ctx) {
+  const t = ctx.template, set = new Set(ctx.chips || []);
+  const txt = (ctx.needsText || "").toLowerCase();
+  t.keywordRules.forEach(r => { if (new RegExp(r.re, "i").test(txt)) set.add(r.cat); });
+  if (!set.size) (t.businessDefaults[ctx.profile.businessType] || ["Cocción", "Refrigeración"]).forEach(c => set.add(c));
+  return [...set];
+}
+function energyMode(ctx) {
+  const a = ctx.answers.gas, e = ctx.profile.energy;
+  if (a && a !== "__skip") { if (/gas/i.test(a) && !/^No/i.test(a)) return "gas"; if (/electric/i.test(a)) return "electrico"; }
+  if (e === "Gas GLP" || e === "Gas natural") return "gas";
+  if (e === "Solo electricidad") return "electrico";
+  if (e === "Mixto") return "mixto";
+  return "unknown";
+}
+function voltageOf(ctx) {
+  const v = (ctx.answers.voltaje && ctx.answers.voltaje !== "__skip") ? ctx.answers.voltaje : ctx.profile.electricity || "";
+  if (/380/.test(v)) return "380"; if (/220/.test(v)) return "220"; return "unknown";
+}
+const ans = (ctx, id) => { const v = ctx.answers[id]; return v === "__skip" || v == null ? null : v; };
+const has = (v, s) => Array.isArray(v) ? v.includes(s) : v === s;
+
+function mockQuestions(ctx) {
+  const cats = detectCategories(ctx), P = ctx.profile, qs = [];
+  const mode = energyMode(ctx);
+  if (ctx.round <= 1) {
+    if (mode === "unknown") qs.push({ id: "gas", text: "¿El local cuenta con instalación de gas?", why: "Para elegir entre equipos a gas o eléctricos", type: "single",
+      options: ["Sí, gas GLP", "Sí, gas natural", "No, solo electricidad"], allowUnknown: true });
+    if (cats.includes("Cocción")) qs.push({ id: "prep", text: "¿Qué preparaciones son principales?", why: "Para definir los equipos de cocción de la línea caliente", type: "multi",
+      options: ["Frituras", "Plancha", "Horno", "Wok / salteados", "Guisos y sopas", "Pollo a la brasa"], allowUnknown: true });
+    if (cats.includes("Refrigeración")) {
+      qs.push({ id: "conservar", text: "¿Qué necesitas conservar?", why: "Para separar refrigeración y congelación", type: "multi", options: ["Carnes", "Pescados y mariscos", "Lácteos", "Bebidas", "Congelados", "Verduras"], allowUnknown: true });
+      qs.push({ id: "formato", text: "¿Prefieres refrigeradora vertical o mesa refrigerada?", why: "Depende del espacio disponible en la línea de trabajo", type: "single", options: ["Refrigeradora vertical", "Mesa refrigerada", "Ambas"], allowUnknown: true });
+    }
+    if (cats.includes("Lavado")) qs.push({ id: "lavado", text: "¿Cómo se lavará la vajilla?", why: "El volumen de platos por turno define el equipo", type: "single", options: ["Manual (pozas)", "Lavavajillas bajo mesa", "Lavavajillas de capota"], allowUnknown: true });
+    if (cats.includes("Panadería")) qs.push({ id: "harina", text: "¿Cuánta harina procesas al día?", why: "Para dimensionar la amasadora y el horno", type: "single", options: ["Hasta 25 kg", "25 a 50 kg", "Más de 50 kg"], allowUnknown: true });
+    if (cats.includes("Cafetería")) qs.push({ id: "cafe", text: "¿Cuántas tazas de café esperas servir al día?", why: "Para elegir la máquina de espresso y los molinos", type: "single", options: ["Hasta 100", "100 a 300", "Más de 300"], allowUnknown: true });
+    const needsElectric = cats.some(c => ["Panadería", "Lavado"].includes(c)) || mode === "electrico";
+    if (needsElectric && (!P.electricity || P.electricity === "No sé")) qs.push({ id: "voltaje", text: "¿Qué tensión tiene el tablero eléctrico?", why: "Algunos equipos solo funcionan con trifásica 380V", type: "single", options: ["Monofásica 220V", "Trifásica 220V", "Trifásica 380V"], allowUnknown: true });
+    if (!P.capacity) qs.push({ id: "capacity", text: "¿Cuántas personas atenderás por servicio?", why: "Las cantidades se calculan según el aforo", type: "number", options: [], allowUnknown: true });
+    if (qs.length < 3) qs.push({ id: "turnos", text: "¿Cuántos turnos opera la cocina?", why: "Para estimar la carga de trabajo de los equipos", type: "single", options: ["1 turno", "2 turnos", "24 horas"], allowUnknown: true });
+    if (qs.length < 3) qs.push({ id: "mesas", text: "¿Necesitas mesas de trabajo de acero inoxidable?", why: "Suelen faltar en la primera compra", type: "single", options: ["Sí", "No"], allowUnknown: true });
+    return { questions: qs.slice(0, 6), done: false };
+  }
+  // segunda ronda: solo si las respuestas abren nuevas necesidades (máx. 3)
+  const prep = ans(ctx, "prep") || [], cons = ans(ctx, "conservar") || [];
+  if (has(prep, "Horno") && !ctx.answers.horno) qs.push({ id: "horno", text: "¿Qué tipo de horno prefieres?", why: "Respondiste que el horno es una preparación principal", type: "single", options: ["Horno combinado (vapor + convección)", "Horno de convección", "El horno de la cocina es suficiente"], allowUnknown: true });
+  if (has(cons, "Bebidas") && !ctx.answers.exhibir) qs.push({ id: "exhibir", text: "¿Las bebidas se exhiben al cliente?", why: "Un visicooler vende más que una refrigeradora cerrada", type: "single", options: ["Sí, a la vista del cliente", "No, solo almacenamiento"], allowUnknown: true });
+  if ((has(prep, "Frituras") || ctx.profile.businessType === "Pollería") && !ctx.answers.papas) qs.push({ id: "papas", text: "¿Pelas y cortas papas en el local?", why: "Una peladora ahorra horas de trabajo si el volumen es alto", type: "single", options: ["Sí, más de 20 kg al día", "Sí, poca cantidad", "No, compro papa procesada"], allowUnknown: true });
+  return { questions: qs.slice(0, 3), done: true };
+}
+
+function mockRecommend(ctx) {
+  const P = ctx.profile, cats = detectCategories(ctx);
+  const cap = +P.capacity || +ans(ctx, "capacity") || 0;
+  const tipo = (P.businessType || "negocio").replace("/", " o ").toLowerCase();
+  const mode = energyMode(ctx), volt = voltageOf(ctx), budget = +P.budget || 0;
+  const base = cap && mode !== "unknown" ? "alta" : "media";
+  const eLabel = { gas: P.energy === "Gas natural" || /natural/.test(ctx.answers.gas || "") ? "gas natural" : "gas GLP", electrico: "energía eléctrica", mixto: "energía mixta", unknown: "energía por confirmar" }[mode];
+  const reason = m => cap ? `Recomendado por ${m} para ${tipo} de ${cap} personas.` : `Recomendado por ${m} para ${tipo}.`;
+  const lines = [], unc = [];
+  const costPEN = p => p.currency === "PEN" ? p.cost : p.cost * DB.settings.exchangeRate;
+  function pick(roles, o = {}) {
+    for (const role of [].concat(roles)) {
+      let c = ctx.catalog.filter(p => p.active && (p.tags || []).includes(role));
+      const en = p => (p.attributes || {}).energy;
+      if (mode === "electrico") c = c.filter(p => en(p) !== "gas");
+      if (mode === "gas" && o.energy) c = c.filter(p => en(p) !== "eléctrico");
+      if (volt === "220") c = c.filter(p => (p.attributes || {}).voltage !== "380V");
+      if (!c.length) continue;
+      c.sort((a, b) => costPEN(a) - costPEN(b));
+      if (mode === "mixto" || mode === "unknown") { const g = c.filter(p => en(p) === "gas"); if (o.energy && g.length) c = g; }
+      const big = !budget && (o.prefer === "max" || cap > 150);
+      return big ? c[c.length - 1] : c[0];
+    }
+    return null;
+  }
+  function add(roles, qty, motivo, o = {}) {
+    const p = pick(roles, o);
+    if (!p) { if (o.missing) unc.push(o.missing); return null; }
+    if (lines.some(l => l.productId === p.id)) return p;
+    let conf = o.conf || base;
+    if (conf === "alta" && volt === "unknown" && (p.attributes || {}).voltage === "380V") conf = "media";
+    lines.push({ productId: p.id, quantity: Math.max(1, qty), reason: reason(motivo), confidence: conf, category: p.category });
+    return p;
+  }
+  const prep = ans(ctx, "prep") || [], cons = ans(ctx, "conservar") || [];
+  const bt = P.businessType || "";
+  if (cats.includes("Cocción")) {
+    if (mode === "electrico") add("cocina-e", cap > 120 ? 2 : 1, "uso solo eléctrico", { missing: "No hay cocina eléctrica activa en tu catálogo" });
+    else if (cap > 120) add("cocina-6", 2, `aforo mayor a 120 personas y uso de ${eLabel}`, { energy: true, missing: "No hay cocina de 6 hornillas en tu catálogo" });
+    else if (cap > 50) add("cocina-6", 1, `uso de ${eLabel}`, { energy: true, missing: "No hay cocina de 6 hornillas en tu catálogo" });
+    else add(["cocina-4", "cocina-6"], 1, `uso de ${eLabel}`, { energy: true, missing: "No hay cocina industrial en tu catálogo" });
+    if (has(prep, "Frituras") || bt === "Pollería" || bt === "Dark kitchen") add("freidora", cap > 120 ? 2 : 1, "preparaciones con frituras", { energy: true });
+    if (has(prep, "Plancha")) add("plancha", 1, "preparaciones a la plancha", { energy: true });
+    const horno = ans(ctx, "horno");
+    if (has(prep, "Horno") && horno !== "El horno de la cocina es suficiente") {
+      if (horno && /combinado/.test(horno)) { if (!add("horno-combi", 1, "horneado con vapor y convección", { energy: true })) add("horno-conv", 1, "horneado (no hay horno combinado compatible con tu energía)", { energy: true, conf: "media", missing: "No hay horno compatible con la energía disponible" }); }
+      else add(["horno-conv", "horno-combi"], 1, "preparaciones al horno", { energy: true, conf: horno ? base : "media" });
+    }
+    if (has(prep, "Wok / salteados") || bt === "Chifa") add("wok", cap > 100 ? 2 : 1, "salteados al wok", { energy: true, missing: mode === "electrico" ? "No hay cocina wok eléctrica en tu catálogo" : "No hay cocina wok en tu catálogo" });
+    if (has(prep, "Guisos y sopas")) add("marmita", 1, "volumen de guisos y sopas", { energy: true, conf: cap >= 100 ? base : "baja" });
+    if (has(prep, "Pollo a la brasa") || bt === "Pollería") add("brasa", Math.max(1, Math.ceil(cap / 80)), "producción de pollo a la brasa (1 horno cada 80 personas)");
+    if (has(P.service, "Buffet")) add("bano-maria", Math.max(1, Math.ceil(cap / 60)), "servicio de buffet");
+    if (has(P.service, "Carta") && mode !== "electrico") add("salamandra", 1, "acabado y gratinado de platos a la carta", { energy: true, conf: "baja" });
+  }
+  if (cats.includes("Refrigeración")) {
+    const formato = ans(ctx, "formato") || "Refrigeradora vertical", n = Math.max(1, Math.ceil((cap || 60) / 60));
+    if (formato !== "Mesa refrigerada") add(cap && cap <= 40 ? ["ref-1p", "ref-2p"] : ["ref-2p", "ref-1p"], n, "conservación de insumos (1 equipo por cada 60 personas)", { missing: "No hay refrigeradora vertical en tu catálogo" });
+    if (formato !== "Refrigeradora vertical") add("mesa-ref", formato === "Ambas" ? 1 : Math.max(1, Math.ceil((cap || 60) / 80)), "frío al alcance de la línea de trabajo");
+    if (has(cons, "Congelados")) add(cap && cap <= 40 ? ["cong-h", "cong-v"] : ["cong-v", "cong-h"], 1, "almacenamiento de congelados");
+    else if (has(cons, "Carnes") || has(cons, "Pescados y mariscos")) add(["cong-h", "cong-v"], 1, "respaldo de congelación para carnes y pescados", { conf: "media" });
+    if (has(cons, "Bebidas") && ans(ctx, "exhibir") !== "No, solo almacenamiento") add("visi", 1, "exhibición de bebidas", { conf: ans(ctx, "exhibir") ? base : "media" });
+    if (has(cons, "Bebidas") || bt === "Cevichería") add("hielo", 1, "consumo de hielo en bebidas y preparaciones", { conf: "baja" });
+    if (bt === "Panadería/Pastelería" || bt === "Cafetería") add("vitrina-pas", 1, "exhibición de productos de pastelería", { conf: bt === "Cafetería" ? "media" : base });
+  }
+  if (cats.includes("Preparación") || bt === "Cevichería" || bt === "Pollería") {
+    add("procesador", 1, "picado y procesado diario de insumos");
+    add("licuadora", 1, "preparación de salsas, cremas y bebidas");
+    add("balanza", 1, "control de porciones y recetas", { conf: "media" });
+    if (bt === "Cevichería") { add("exprimidor", cap > 60 ? 2 : 1, "alto consumo de limón para ceviches"); add("cortadora", 1, "corte uniforme de cebolla y verduras", { conf: "media" }); }
+    const papas = ans(ctx, "papas");
+    if ((papas && /más de 20/.test(papas)) || (!papas && bt === "Pollería")) add("peladora", 1, "volumen alto de papas peladas al día", { conf: papas ? base : "media" });
+  }
+  if (cats.includes("Panadería")) {
+    const h = ans(ctx, "harina") || (cap > 200 ? "Más de 50 kg" : "Hasta 25 kg");
+    const hc = ans(ctx, "harina") ? base : "media";
+    if (h === "Hasta 25 kg") { add("amasadora", 1, "proceso de hasta 25 kg de harina al día", { conf: hc }); add(["horno-piso", "horno-rot", "horno-conv"], 1, "horneado de producción pequeña", { energy: true, conf: hc, missing: "No hay horno de panadería compatible con tu energía" }); }
+    else { add(["amasadora-g", "amasadora"], h === "Más de 50 kg" ? 2 : 1, `proceso de ${h.toLowerCase()} de harina al día`, { conf: hc }); add(["horno-rot", "horno-piso"], 1, "horneado de producción media o alta", { energy: true, conf: hc, missing: "No hay horno de panadería compatible con tu energía" }); }
+    add("batidora", 1, "masas batidas y cremas de pastelería");
+    add("fermentacion", 1, "control de fermentación de la masa", { conf: "media" });
+    add("divisora", 1, "porcionado uniforme de la masa", { conf: "media" });
+    add("carro-pan", 2, "traslado de bandejas entre fermentación y horno", { conf: "media" });
+    add("laminadora", 1, "hojaldres y masas laminadas", { conf: "baja" });
+  }
+  if (cats.includes("Lavado")) {
+    const lv = ans(ctx, "lavado") || (cap > 100 ? "Lavavajillas de capota" : "Manual (pozas)");
+    const lc = ans(ctx, "lavado") ? base : "media";
+    if (lv === "Lavavajillas de capota") { add(["lavavajillas-cap", "lavavajillas-bm"], 1, "volumen alto de vajilla por turno", { conf: volt === "220" ? "media" : lc }); add("lavadero-2", 1, "pre-lavado y lavado de ollas"); add("ducha", 1, "pre-lavado de vajilla"); }
+    else if (lv === "Lavavajillas bajo mesa") { add("lavavajillas-bm", 1, "lavado mecánico en espacio reducido", { conf: lc }); add("lavadero-1", 1, "pre-lavado y lavado de ollas"); }
+    else { add("lavadero-2", Math.max(1, Math.ceil((cap || 50) / 100)), "lavado manual de vajilla y ollas", { conf: lc }); add("ducha", 1, "pre-lavado de vajilla", { conf: "media" }); }
+    add("trampa", 1, "exigencia municipal de trampa de grasa", { conf: "baja" });
+  }
+  if (cats.includes("Mobiliario acero inox") || ans(ctx, "mesas") === "Sí") {
+    add("mesa-trabajo", Math.max(1, Math.ceil((cap || 40) / 40)), "superficie de trabajo (1 mesa cada 40 personas)");
+    add("estante", 2, "almacenamiento de insumos secos", { conf: "media" });
+    add("carro", 1, "traslado de insumos y vajilla", { conf: "baja" });
+  } else if (cats.includes("Cocción")) add("mesa-trabajo", 1, "apoyo junto a la línea de cocción", { conf: "baja" });
+  if (cats.includes("Cafetería")) {
+    const cf = ans(ctx, "cafe");
+    add("espresso", 1, cf ? `servicio de ${cf.toLowerCase()} tazas al día` : "servicio de café espresso", { prefer: cf === "Más de 300" ? "max" : "min", conf: cf ? base : "media" });
+    add("molino", cf === "Más de 300" ? 2 : 1, "molienda al momento para espresso");
+    add("licuadora-barra", 1, "frappés y jugos en barra", { conf: "media" });
+  }
+  // necesidades sin producto en catálogo
+  const t = (ctx.needsText || "").toLowerCase();
+  if (/campana|extrac/.test(t)) unc.push("No hay campana extractora en tu catálogo");
+  if (/vajilla|menaje|olla|sart[eé]n|cubierto/.test(t)) unc.push("No hay vajilla ni menaje (ollas, sartenes, cubiertos) en tu catálogo");
+  if (/silla|sal[oó]n|comensal/.test(t) && /mesa|silla/.test(t)) unc.push("No hay mobiliario de salón (mesas y sillas para comensales) en tu catálogo");
+  if (/agua|ablandador|filtro/.test(t)) unc.push("No hay sistemas de tratamiento de agua en tu catálogo");
+  cats.forEach(c => { if (!ctx.catalog.some(p => p.active && p.category === c)) unc.push(`No hay productos activos de ${c} en tu catálogo`); });
+  // resumen y presupuesto
+  const sel = lines.filter(l => l.confidence !== "baja");
+  let estimate = sel.reduce((s, l) => { const p = ctx.catalog.find(x => x.id === l.productId); return s + costPEN(p) * l.quantity * (1 + DB.settings.defaultMargin / 100); }, 0);
+  const catsUsed = [...new Set(lines.map(l => l.category))];
+  let summary = `Propuesta de ${sel.length} equipos recomendados y ${lines.length - sel.length} sugerencias opcionales en ${catsUsed.length} categorías para ${tipo}${cap ? ` de ${cap} personas` : ""}, con ${eLabel}.`;
+  if (mode === "unknown") summary += " Confirma el tipo de energía para subir la confianza de los equipos de cocción.";
+  if (budget) summary += estimate > budget ? ` La selección estimada (S/ ${NF0.format(estimate)} sin IGV) supera tu presupuesto referencial de S/ ${NF0.format(budget)}; se priorizaron equipos de menor costo.` : ` La selección estimada (S/ ${NF0.format(estimate)} sin IGV) está dentro de tu presupuesto referencial.`;
+  return { lines, uncoveredNeeds: [...new Set(unc)], summary };
+}
+/* ============ estado de la app ============ */
+DB = loadDB() || seedDB();
+if (!DB.template) DB.template = clone(TEMPLATE_FOOD);
+DB.ui = DB.ui || {};
+let W = null;                    // cotización en edición
+let busy = false;                // IA pensando
+let errors = {};                 // errores de validación del paso actual
+let CAT = { stage: "list", q: "", cat: "", cur: "", editing: null, headers: [], rows: [], mapping: {}, mode: "upsert", result: null, fileName: "" };
+let DL = null;
+let confirmReset = false;
+if (window.claude && window.claude.use) window.claude.use("downloads").then(d => { DL = d; }).catch(() => {});
+
+const ROUTES = ["inicio", "nueva", "cotizacion", "catalogo", "config", "pdf"];
+const route = () => { const h = location.hash.replace("#", ""); return ROUTES.includes(h) ? h : "inicio"; };
+const go = h => { if (location.hash === "#" + h) render(); else location.hash = h; };
+window.addEventListener("hashchange", () => { errors = {}; render(); window.scrollTo(0, 0); });
+
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 2600); }
+function rerender() { setTimeout(() => { const id = document.activeElement && document.activeElement.id; render(); if (id) { const el = document.getElementById(id); if (el) el.focus(); } }, 0); }
+const clientOf = q => q.client && q.client.name ? q.client : (store.clients.get(q.clientId) || emptyClient());
+const hasCatalog = () => DB.products.some(p => p.active);
+
+/* ============ shell ============ */
+function renderNav(r) {
+  const items = [["inicio", "Inicio", I.home], ["catalogo", "Catálogo", I.box], ["config", "Configuración", I.gear]];
+  const cur = r === "nueva" || r === "cotizacion" || r === "pdf" ? "cotizacion" : r;
+  const curQ = DB.ui.currentQuoteId && store.quotes.get(DB.ui.currentQuoteId);
+  const side = items.map(([h, t, i]) => `<a href="#${h}" ${cur === h ? 'aria-current="page"' : ""}>${i}${t}</a>`);
+  if (curQ) side.splice(1, 0, `<a href="#cotizacion" ${cur === "cotizacion" ? 'aria-current="page"' : ""}>${I.file}<span>${esc(curQ.number)}<small class="muted" style="display:block;font-size:.72rem;font-weight:400">En edición</small></span></a>`);
+  $("#sidenav").innerHTML = side.join("");
+  $("#sidefoot").innerHTML = `<b>${esc(DB.settings.companyName)}</b>Vendedor: ${esc(DB.settings.seller)}${memoryOnly ? "<br>Sin guardado local en este navegador" : ""}`;
+  $("#bottombar").innerHTML = `<a href="#inicio" ${cur === "inicio" ? 'aria-current="page"' : ""}>${I.home}Inicio</a>
+    <a href="#catalogo" ${cur === "catalogo" ? 'aria-current="page"' : ""}>${I.box}Catálogo</a>
+    <a href="#nueva" aria-label="Nueva cotización"><span class="fab">${I.plus}</span></a>
+    <a href="#cotizacion" ${cur === "cotizacion" ? 'aria-current="page"' : ""} ${curQ ? "" : 'style="opacity:.4;pointer-events:none"'}>${I.file}Cotización</a>
+    <a href="#config" ${cur === "config" ? 'aria-current="page"' : ""}>${I.gear}Ajustes</a>`;
+}
+function render() {
+  const r = route();
+  if (r === "nueva") { startNewQuote(); return; }
+  if (r === "cotizacion" || r === "pdf") {
+    W = DB.ui.currentQuoteId ? store.quotes.get(DB.ui.currentQuoteId) : null;
+    if (!W) { location.replace("#inicio"); return; }
+  }
+  renderNav(r);
+  const m = $("#main");
+  m.innerHTML = `<div class="wrap">${{ inicio: viewDashboard, cotizacion: viewWizard, catalogo: viewCatalog, config: viewConfig, pdf: viewPdf }[r]()}</div>`;
+  if (r === "pdf") fitSheets();
+  if (r === "cotizacion" && W.step === 4) bindDrag();
+}
+function startNewQuote() {
+  const q = newQuote({ number: nextNumber() });
+  store.quotes.upsert(q); DB.ui.currentQuoteId = q.id; saveDB();
+  location.replace("#cotizacion");
+}
+
+/* ============ S1 Inicio ============ */
+function emptyCatalogCta() {
+  return `<div class="empty"><h2>Carga tu lista de precios</h2><p class="muted">La IA solo propone productos de tu catálogo. Sube un Excel o CSV, o prueba con 66 equipos gastronómicos de ejemplo.</p>
+    <div class="row"><a class="btn primary" href="#catalogo">${I.upload}Cargar lista de precios</a><button class="btn" data-act="demo-catalog">Usar catálogo de demostración</button></div></div>`;
+}
+function viewDashboard() {
+  const now = new Date(), m = now.getMonth(), y = now.getFullYear();
+  const qs = [...DB.quotes].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const month = qs.filter(q => { const d = new Date(q.createdAt); return d.getMonth() === m && d.getFullYear() === y; });
+  const tot = q => pricing.totals(q);
+  const toPEN = q => q.currency === "PEN" ? tot(q).total : tot(q).total * q.exchangeRate;
+  const nonDraft = month.filter(q => q.status !== "Borrador");
+  const amount = nonDraft.reduce((s, q) => s + toPEN(q), 0);
+  const acc = month.filter(q => q.status === "Aceptada").length, dec = month.filter(q => ["Enviada", "Aceptada", "Rechazada"].includes(q.status)).length;
+  const conv = dec ? acc / dec * 100 : 0;
+  const withLines = month.filter(q => q.lines.length);
+  const costSum = withLines.reduce((s, q) => s + tot(q).totalCost * (q.currency === "USD" ? q.exchangeRate : 1), 0);
+  const profitSum = withLines.reduce((s, q) => s + tot(q).profit * (q.currency === "USD" ? q.exchangeRate : 1), 0);
+  const avgM = costSum ? profitSum / costSum * 100 : 0;
+  const monthName = now.toLocaleDateString("es-PE", { month: "long" });
+  const rows = qs.slice(0, 10).map(q => {
+    const c = clientOf(q), t = tot(q);
+    return `<div class="qrow">
+      <span class="q-num mono">${esc(q.number)}</span>
+      <span class="client"><b>${esc(c.name || "Sin cliente")}</b><small>${esc(q.businessProfile.businessType || "—")}${q.businessProfile.capacity ? ` · ${q.businessProfile.capacity} personas` : ""}</small></span>
+      <span class="q-date muted">${fmtDate(q.createdAt)}</span>
+      <span class="q-total num"><b>${money(t.total, q.currency)}</b></span>
+      <span class="q-st"><select class="status-sel st-${q.status}" data-status="${q.id}" aria-label="Estado de ${esc(q.number)}">${["Borrador", "Enviada", "Aceptada", "Rechazada"].map(s => `<option ${s === q.status ? "selected" : ""}>${s}</option>`).join("")}</select></span>
+      <span class="qactions"><button class="iconbtn" title="Abrir" aria-label="Abrir" data-act="open-quote" data-id="${q.id}">${I.open}</button><button class="iconbtn" title="Duplicar" aria-label="Duplicar" data-act="dup-quote" data-id="${q.id}">${I.copy}</button><button class="iconbtn" title="Descargar PDF" aria-label="Descargar PDF" data-act="pdf-quote" data-id="${q.id}" ${q.lines.length ? "" : "disabled"}>${I.download}</button></span>
+    </div>`;
+  }).join("");
+  return `<header class="pagehead"><div><p class="eyebrow">${esc(fmtDateLong(now.toISOString()))}</p><h1>Hola, ${esc(DB.settings.seller.split(" ")[0])}</h1></div><a class="btn primary" href="#nueva">${I.plus}Nueva cotización</a></header>
+  ${hasCatalog() ? "" : emptyCatalogCta()}
+  <section class="kpis" aria-label="Indicadores de ${monthName}">
+    <div class="kpi"><span class="lbl">Cotizaciones de ${monthName}</span><span class="val">${month.length}</span><span class="sub">${month.filter(q => q.status === "Borrador").length} en borrador · ${nonDraft.length} emitidas</span></div>
+    <div class="kpi"><span class="lbl">Monto cotizado</span><span class="val">S/ ${NF0.format(amount)}</span><span class="sub">Con IGV, sin borradores, USD convertidos a soles</span></div>
+    <div class="kpi"><span class="lbl">Tasa de conversión</span><span class="val">${pct(conv)}</span><div class="bar" aria-hidden="true"><i style="width:${Math.min(100, conv)}%"></i></div><span class="sub">${acc} aceptadas de ${dec} enviadas, aceptadas o rechazadas</span></div>
+    <div class="kpi locked"><span class="lbl">Margen promedio ${lockTag()}</span><span class="val">${pct(avgM)}</span><span class="sub">Utilidad bruta sobre costo, después de descuentos</span></div>
+  </section>
+  <section class="panel"><div class="panel-head"><h2>Últimas cotizaciones</h2><span class="muted" style="font-size:.85rem">${DB.quotes.length} en total</span></div>
+    <div class="qlist"><div class="qrow head"><span>Número</span><span>Cliente</span><span>Fecha</span><span class="num">Total</span><span>Estado</span><span></span></div>${rows || `<div class="panel-body muted">Aún no tienes cotizaciones. Crea la primera con “Nueva cotización”.</div>`}</div>
+  </section>`;
+}
+
+/* ============ S2 Wizard ============ */
+const STEPS = [["Cliente", "Datos y moneda"], ["Perfil del negocio", "Contexto para la IA"], ["Necesidades + IA", "Preguntas y propuesta"], ["Revisión y PDF", "Precios y condiciones"]];
+function summaryLines() {
+  if (W.step === 3 && W.ui3 === "c" && W.aiProposal) {
+    const manual = W.lines.filter(l => l.source === "manual");
+    const sel = W.aiProposal.lines.filter(l => l.selected).map(l => { const p = store.products.get(l.productId); return p ? makeLine(W, p, l.quantity) : null; }).filter(Boolean);
+    return manual.concat(sel);
+  }
+  return W.lines;
+}
+function viewWizard() {
+  const t = pricing.totals(W, summaryLines()), c = W.client;
+  const stepper = STEPS.map(([a, b], i) => { const n = i + 1; return `<button class="step ${n < W.step ? "done" : ""}" data-act="goto-step" data-step="${n}" ${n === W.step ? 'aria-current="step"' : ""} ${n > W.maxStep ? "disabled" : ""}><span class="n">${n < W.step ? "✓" : n}</span><span><b>${a}</b><small>${b}</small></span></button>`; }).join("");
+  const body = [null, step1, step2, step3, step4][W.step]();
+  const nextLabel = W.step === 3 ? (W.ui3 === "c" ? "Usar selección y revisar" : "Revisar sin IA") : "Siguiente";
+  return `<header class="pagehead"><div><p class="eyebrow">Cotización <span class="mono">${esc(W.number)}</span> · <span class="chip st-${W.status}">${W.status}</span></p><h1>${esc(c.name || "Nueva cotización")}</h1></div>
+    <div class="row"><button class="btn" data-act="save-draft">Guardar borrador</button>${W.lines.length ? `<a class="btn" href="#pdf">${I.file}Vista previa PDF</a>` : ""}</div></header>
+  <nav class="stepper" aria-label="Pasos">${stepper}</nav>
+  <div class="stepper-mobile"><div><p class="eyebrow" style="margin:0">Paso ${W.step} de 4</p><b>${STEPS[W.step - 1][0]}</b></div><div class="dots">${[1, 2, 3, 4].map(n => `<i class="${n <= W.step ? "on" : ""}"></i>`).join("")}</div></div>
+  <div class="wiz ${W.step === 4 ? "full" : ""}"><section class="wiz-body">${body}</section>
+    <aside class="summary panel"><div class="panel-head"><h3>Resumen</h3><span class="muted" style="font-size:.8rem">${W.currency}</span></div><div class="panel-body">
+      <div class="rowx"><span class="muted">Cliente</span><span style="text-align:right">${esc(c.name || "—")}</span></div>
+      <div class="rowx"><span class="muted">Ítems</span><span class="num">${t.items}</span></div>
+      <div class="rowx"><span class="muted">Subtotal</span><span class="num">${money(t.subtotal, W.currency)}</span></div>
+      ${W.discount ? `<div class="rowx"><span class="muted">Descuento ${W.discount}%</span><span class="num">− ${money(t.descuento, W.currency)}</span></div>` : ""}
+      <div class="rowx"><span class="muted">IGV ${t.igvPct}%</span><span class="num">${money(t.igv, W.currency)}</span></div>
+      <div class="rowx total"><span>Total</span><span class="num">${money(t.total, W.currency)}</span></div>
+      ${W.step === 3 && W.ui3 === "c" ? `<p class="muted" style="font-size:.78rem;margin-top:8px">Incluye los productos marcados en la propuesta.</p>` : ""}
+    </div></aside></div>
+  <div class="wiz-nav"><button class="btn ghost" data-act="back" ${W.step === 1 ? "disabled" : ""}>${I.left}<span>Atrás</span></button>
+    <div class="mini"><b>${money(t.total, W.currency)}</b><small>${t.items} ítems · con IGV</small></div>
+    ${W.step < 4 ? `<button class="btn primary" data-act="next" ${busy ? "disabled" : ""}>${nextLabel}${I.right}</button>` : `<button class="btn primary" data-act="download-pdf">${I.download}Descargar PDF</button>`}</div>`;
+}
+const fld = (id, label, val, o = {}) => `<div class="field ${o.cls || ""}"><label for="${id}">${label}${o.req ? " *" : ""}</label><input class="input ${errors[o.key || id] ? "err" : ""}" id="${id}" data-bind="${o.bind}" value="${esc(val)}" ${o.type ? `type="${o.type}"` : ""} ${o.attrs || ""} autocomplete="off">${errors[o.key || id] ? `<span class="err-text">${errors[o.key || id]}</span>` : o.hint ? `<span class="hint">${o.hint}</span>` : ""}</div>`;
+function step1() {
+  const c = W.client;
+  return `<div class="panel"><div class="panel-head"><h2>Cliente</h2>${c.id ? `<span class="chip st-Aceptada">${I.check}Cliente guardado</span>` : `<span class="muted" style="font-size:.85rem">Se guarda automáticamente al continuar</span>`}</div><div class="panel-body" style="display:flex;flex-direction:column;gap:16px">
+    <div class="field typeahead"><label for="cli-search">Buscar cliente existente</label><input class="input" id="cli-search" placeholder="Nombre, razón social, RUC o DNI" autocomplete="off"><div id="cli-results"></div></div>
+    <div class="row" style="justify-content:space-between"><span class="lbl">${c.id ? "Datos del cliente" : "O crea un cliente nuevo"}</span>${c.id ? `<button class="btn ghost sm" data-act="client-new">Usar otro cliente</button>` : ""}</div>
+    <div class="grid2">
+      ${fld("c-name", "Razón social o nombre", c.name, { bind: "client.name", req: true, cls: "span2", key: "name" })}
+      <div class="field"><label for="c-doctype">Tipo de documento</label><select class="input" id="c-doctype" data-bind="client.documentType"><option ${c.documentType === "RUC" ? "selected" : ""}>RUC</option><option ${c.documentType === "DNI" ? "selected" : ""}>DNI</option></select></div>
+      ${fld("c-doc", "Número de documento", c.documentNumber, { bind: "client.documentNumber", key: "doc", attrs: `inputmode="numeric" maxlength="11"`, hint: c.documentType === "RUC" ? "11 dígitos" : "8 dígitos" })}
+      ${fld("c-contact", "Contacto", c.contactName, { bind: "client.contactName" })}
+      ${fld("c-phone", "Teléfono", c.phone, { bind: "client.phone", key: "contact", attrs: 'inputmode="tel"', hint: "Teléfono o email, al menos uno" })}
+      ${fld("c-email", "Email", c.email, { bind: "client.email", type: "email" })}
+      ${fld("c-city", "Ciudad", c.city, { bind: "client.city" })}
+      ${fld("c-addr", "Dirección", c.address, { bind: "client.address", cls: "span2" })}
+    </div></div></div>
+  <div class="panel"><div class="panel-head"><h2>Moneda de la cotización</h2></div><div class="panel-body grid2">
+    <div class="field"><span class="lbl">Moneda</span><div class="seg" role="group" aria-label="Moneda"><button data-act="currency" data-cur="PEN" aria-pressed="${W.currency === "PEN"}">Soles (S/)</button><button data-act="currency" data-cur="USD" aria-pressed="${W.currency === "USD"}">Dólares (US$)</button></div></div>
+    ${fld("c-rate", "Tipo de cambio USD → PEN", W.exchangeRate, { bind: "exchangeRate", type: "number", attrs: 'step="0.001" min="0" data-num data-rerender', hint: `Tomado de Configuración (S/ ${DB.settings.exchangeRate}). Editable para esta cotización.` })}
+  </div></div>`;
+}
+function renderClientResults(q) {
+  const box = $("#cli-results"); if (!box) return;
+  q = q.trim().toLowerCase();
+  if (!q) { box.innerHTML = ""; return; }
+  const hits = DB.clients.filter(c => c.name.toLowerCase().includes(q) || c.documentNumber.includes(q) || (c.contactName || "").toLowerCase().includes(q)).slice(0, 6);
+  box.innerHTML = `<div class="ta-list">${hits.map(c => `<button data-act="pick-client" data-id="${c.id}"><span><b>${esc(c.name)}</b><br><small class="muted">${esc(c.contactName)} · ${esc(c.city)}</small></span><span class="mono muted">${c.documentType} ${esc(c.documentNumber)}</span></button>`).join("") || `<button disabled><span class="muted">Sin resultados. Completa el formulario para crear el cliente.</span></button>`}</div>`;
+}
+function step2() {
+  const P = W.businessProfile;
+  const qs = DB.template.profileQuestions.map(q => {
+    let input = "";
+    if (q.type === "cards" || q.type === "single") input = `<div class="${q.type === "cards" ? "cards" : "opts"}">${q.options.map(o => `<button class="opt" data-act="prof" data-q="${q.id}" data-v="${esc(o)}" aria-pressed="${P[q.id] === o}">${esc(o)}</button>`).join("")}</div>`;
+    else if (q.type === "multi") input = `<div class="opts">${q.options.map(o => `<button class="opt" data-act="prof-multi" data-q="${q.id}" data-v="${esc(o)}" aria-pressed="${(P[q.id] || []).includes(o)}">${esc(o)}</button>`).join("")}</div>`;
+    else input = `<div class="row" style="max-width:320px;flex-wrap:nowrap"><input class="input" id="p-${q.id}" type="number" min="0" data-bind="businessProfile.${q.id}" data-num value="${esc(P[q.id] ?? "")}" aria-label="${esc(q.label)}"><span class="muted" style="white-space:nowrap">${q.type === "money" ? W.currency === "USD" ? "US$" : "S/" : esc(q.unit || "")}</span></div>`;
+    return `<div class="qsec"><div><h3>${esc(q.label)}${q.required ? " *" : ""}${q.optional ? ` <span class="muted" style="font-weight:400;font-size:.85rem">(opcional)</span>` : ""}</h3>${q.hint ? `<p class="muted" style="font-size:.83rem">${esc(q.hint)}</p>` : ""}</div>${input}${errors[q.id] ? `<span class="err-text">${errors[q.id]}</span>` : ""}</div>`;
+  }).join("");
+  return `<div class="panel"><div class="panel-head"><h2>Perfil del negocio</h2><span class="muted" style="font-size:.82rem">Plantilla: ${esc(DB.template.name)}</span></div><div class="panel-body">${qs}</div></div>`;
+}
+function staleBanner() {
+  if (!W.stale || !W.aiProposal) return "";
+  return `<div class="ai-box row" style="justify-content:space-between"><span><b>¿Regenerar propuesta?</b> Cambiaste el perfil o la necesidad. Se mantendrán los productos agregados manualmente.</span><span class="row"><button class="btn sm" data-act="keep-proposal">Mantener</button><button class="btn ai sm" data-act="regen">${I.sparkle}Regenerar</button></span></div>`;
+}
+function thinking(t = "La IA está analizando…") { return `<div class="thinking" role="status">${I.sparkle}<span>${t}</span><span class="dots3"><i></i><i></i><i></i></span></div>`; }
+function step3() {
+  if (busy) return thinking(busy === true ? undefined : busy);
+  if (W.ui3 === "b") return step3b();
+  if (W.ui3 === "c" && W.aiProposal) return staleBanner() + step3c();
+  return `${staleBanner()}<div class="panel"><div class="panel-head"><h2>Describe la necesidad</h2>${aiTag("La IA usa tu catálogo")}</div><div class="panel-body" style="display:flex;flex-direction:column;gap:14px">
+    <div class="field"><label for="needs">¿Qué necesita el cliente?</label><textarea class="input" id="needs" data-bind="needsText" placeholder="Ej.: Necesito equipar la cocina caliente y la zona de frío para un restaurante de 80 personas">${esc(W.needsText)}</textarea></div>
+    <div class="field"><span class="lbl">Categorías</span><div class="opts">${DB.template.chips.map(c => `<button class="opt" data-act="chip" data-v="${esc(c)}" aria-pressed="${W.chips.includes(c)}">${esc(c)}</button>`).join("")}</div></div>
+    ${!hasCatalog() ? emptyCatalogCta() : `<div class="row"><button class="btn ai" data-act="analyze" ${W.needsText.trim() || W.chips.length ? "" : "disabled"}>${I.sparkle}Analizar con IA</button>${W.aiProposal ? `<button class="btn ghost" data-act="view-proposal">Ver propuesta anterior</button>` : ""}</div>`}
+  </div></div>`;
+}
+function qInput(q) {
+  const v = W.aiAnswers[q.id];
+  if (q.type === "number") return `<div class="row"><input class="input" style="max-width:160px" id="aq-${q.id}" type="number" min="0" data-ai-num="${q.id}" value="${esc(v && v !== "__skip" ? v : "")}" aria-label="${esc(q.text)}"><button class="opt" data-act="ai-skip" data-q="${q.id}" aria-pressed="${v === "__skip"}">No sé / omitir</button></div>`;
+  const isMulti = q.type === "multi";
+  const arr = Array.isArray(v) ? v : (v && v !== "__skip" ? [v] : []);
+  const other = arr.find(x => !q.options.includes(x)) || "";
+  return `<div class="opts">${q.options.map(o => `<button class="opt" data-act="ai-opt" data-q="${q.id}" data-v="${esc(o)}" data-multi="${isMulti}" aria-pressed="${arr.includes(o)}">${esc(o)}</button>`).join("")}
+    <button class="opt" data-act="ai-skip" data-q="${q.id}" aria-pressed="${v === "__skip"}">No sé / omitir</button></div>
+    <input class="input" id="aq-${q.id}-other" data-ai-other="${q.id}" data-multi="${isMulti}" placeholder="Otro (escribe tu respuesta)" value="${esc(other)}" style="max-width:420px">`;
+}
+function step3b() {
+  const qs = W.aiPending || [];
+  const round = W.aiRound;
+  return `<div class="ai-box" style="display:flex;gap:10px;align-items:flex-start">${I.sparkle}<div><b>${round > 1 ? "Un par de preguntas más" : `Tengo ${qs.length} preguntas antes de proponer equipos`}</b><p style="font-size:.88rem">${round > 1 ? "Tus respuestas abrieron nuevas necesidades." : "Responde las que sepas; puedes omitir cualquiera."}</p></div></div>
+    ${qs.map(q => `<div class="qcard"><div><h3>${esc(q.text)}</h3><p class="why">${I.sparkle} ${esc(q.why)}</p></div>${qInput(q)}</div>`).join("")}
+    <div class="row"><button class="btn ghost" data-act="back-3a">${I.left}Editar necesidad</button><button class="btn ai" data-act="propose">${I.sparkle}Generar propuesta</button></div>`;
+}
+function step3c() {
+  const pr = W.aiProposal, groups = {};
+  pr.lines.forEach((l, i) => { const p = store.products.get(l.productId); if (!p) return; (groups[p.category] = groups[p.category] || []).push({ l, p, i }); });
+  const g = Object.entries(groups).map(([cat, items]) => `<div class="pgroup"><h3>${esc(cat)}</h3>${items.map(({ l, p, i }) => {
+    const ln = makeLine(W, p, l.quantity);
+    return `<div class="pline ${l.selected ? "" : "off"}"><input type="checkbox" id="pl-${i}" data-act="pl-toggle" data-i="${i}" ${l.selected ? "checked" : ""} aria-label="Incluir ${esc(p.name)}">
+      <div style="min-width:0"><label for="pl-${i}" class="nm">${esc(p.name)}</label> <span class="mono muted">${esc(p.sku)}</span> <span class="muted" style="font-size:.82rem">· ${esc(p.brand)}</span>
+        <div class="reason">${I.sparkle}<span>${esc(l.reason)}</span></div><div style="margin-top:6px"><span class="chip cf-${l.confidence}">Confianza ${l.confidence}</span></div></div>
+      <div class="c-qty"><span class="mlabel">Cant.</span><input class="input" style="min-height:36px;padding:5px 8px;text-align:right" type="number" min="1" id="plq-${i}" data-plq="${i}" value="${l.quantity}" aria-label="Cantidad"></div>
+      <div class="c-price num"><span class="mlabel">P. unit.</span>${money(ln.unitPrice, W.currency)}<br><small class="muted">c/u sin IGV</small></div>
+      <div class="c-total num"><b>${money(ln.lineTotal, W.currency)}</b></div></div>`;
+  }).join("")}</div>`).join("");
+  return `<div class="panel"><div class="panel-head"><h2>Propuesta de la IA</h2>${aiTag()}</div><div class="panel-body" style="display:flex;flex-direction:column;gap:14px">
+    <p class="ai-box" style="font-size:.9rem">${esc(pr.summary)}</p>
+    <div>${g || `<p class="muted">La IA no encontró productos compatibles en tu catálogo.</p>`}</div>
+    ${pr.uncoveredNeeds.length ? `<div class="notice bad">${I.alert}<div><b>Necesidades no cubiertas</b><ul style="margin:6px 0 0;padding-left:18px">${pr.uncoveredNeeds.map(u => `<li>${esc(u)}</li>`).join("")}</ul></div></div>` : ""}
+    <p class="muted" style="font-size:.82rem">Precios con margen por defecto de ${W.defaultMargin}%. Las sugerencias con confianza baja vienen sin marcar.</p>
+    <div class="row"><button class="btn ghost" data-act="back-3b">${I.left}Volver a preguntas</button><button class="btn ai" data-act="regen">${I.sparkle}Regenerar</button></div>
+  </div></div>`;
+}
+function step4() {
+  const t = pricing.totals(W), cur = W.currency;
+  const rows = W.lines.map((l, i) => `<div class="lrow" draggable="true" data-idx="${i}">
+      <span class="grip" title="Arrastra para reordenar">${I.grip}</span>
+      <div class="c-p"><div class="nm">${esc(l.name)}</div><div class="meta"><span class="mono">${esc(l.sku)}</span><span>${esc(l.category)}</span>${l.source === "ai" ? aiTag("IA") : `<span>Agregado manualmente</span>`}</div>${l.aiReason ? `<div class="meta" style="color:var(--ai)">${esc(l.aiReason)}</div>` : ""}
+        <button class="iconbtn c-del" style="position:absolute;top:-4px;right:-6px" data-act="del-line" data-i="${i}" aria-label="Eliminar ${esc(l.name)}">${I.trash}</button></div>
+      <div class="c-q"><span class="mlabel">Cantidad</span><input class="input" type="number" min="1" id="lq-${l.id}" data-line="${i}" data-f="quantity" value="${l.quantity}" aria-label="Cantidad"></div>
+      <div class="c-c internal num"><span class="mlabel">${I.lock} Costo unit.</span>${money(l.unitCost, cur)}</div>
+      <div class="c-m internal"><span class="mlabel">${I.lock} Margen %</span><input class="input" type="number" step="0.1" id="lm-${l.id}" data-line="${i}" data-f="margin" value="${round2(l.margin)}" aria-label="Margen %"></div>
+      <div class="c-pr"><span class="mlabel">Precio unit.</span><input class="input" type="number" step="0.01" min="0" id="lp-${l.id}" data-line="${i}" data-f="unitPrice" value="${l.unitPrice.toFixed(2)}" aria-label="Precio unitario"></div>
+      <div class="c-t num">${money(l.lineTotal, cur)}</div>
+      <span class="c-del-d"><button class="iconbtn" data-act="del-line" data-i="${i}" aria-label="Eliminar ${esc(l.name)}">${I.trash}</button></span>
+    </div>`).join("");
+  const conv = (W.aiConversation || []).filter(r => r.answers);
+  return `<div class="panel"><div class="panel-head"><h2>Revisión</h2><button class="btn" data-act="add-product">${I.plus}Agregar producto</button></div>
+    <div class="panel-body grid3" style="border-bottom:1px solid var(--line)">
+      <div class="field"><label for="g-margin">Margen por defecto % ${lockTag("Interno")}</label><input class="input" type="number" step="0.5" id="g-margin" data-bind="defaultMargin" data-num data-rerender value="${W.defaultMargin}"><span class="hint">Aplica a líneas sin margen propio</span></div>
+      <div class="field"><label for="g-disc">Descuento %</label><input class="input" type="number" step="0.5" min="0" max="100" id="g-disc" data-bind="discount" data-num data-rerender value="${W.discount}"></div>
+      <div class="field"><span class="lbl">Moneda</span><div class="seg" role="group"><button data-act="currency" data-cur="PEN" aria-pressed="${cur === "PEN"}">S/</button><button data-act="currency" data-cur="USD" aria-pressed="${cur === "USD"}">US$</button></div><span class="hint">Tipo de cambio S/ ${W.exchangeRate}</span></div>
+    </div>
+    <div class="lines" id="lines">${W.lines.length ? `<div class="lrow head"><span></span><span>Producto</span><span class="num">Cant.</span><span class="num th-lock">${I.lock}Costo</span><span class="num th-lock">${I.lock}Margen</span><span class="num">P. unit.</span><span class="num">Total</span><span></span></div>${rows}` : `<div class="panel-body"><div class="empty"><b>Sin productos</b><p class="muted">Vuelve al paso 3 para pedir una propuesta a la IA o agrega productos del catálogo.</p><div class="row"><button class="btn ai" data-act="goto-step" data-step="3">${I.sparkle}Ir a la IA</button><button class="btn" data-act="add-product">${I.plus}Agregar producto</button></div></div></div>`}</div>
+    ${errors.lines ? `<div class="panel-body"><span class="err-text">${errors.lines}</span></div>` : ""}
+  </div>
+  <div class="split">
+    <div class="lock"><div class="row" style="justify-content:space-between;margin-bottom:10px">${lockTag()}<span style="font-size:.78rem">Nunca se imprime</span></div>
+      <div class="totals" style="min-width:0"><div class="rowx"><span>Costo total</span><span class="num">${money(t.totalCost, cur)}</span></div><div class="rowx"><span>Utilidad bruta</span><span class="num">${money(t.profit, cur)}</span></div><div class="rowx"><span>Margen promedio sobre costo</span><span class="num">${pct(t.avgMargin)}</span></div></div></div>
+    <div class="panel panel-body"><div class="totals" style="margin-left:auto">
+      <div class="rowx"><span>Subtotal</span><span class="num">${money(t.subtotal, cur)}</span></div>
+      <div class="rowx"><span>Descuento ${W.discount || 0}%</span><span class="num">− ${money(t.descuento, cur)}</span></div>
+      <div class="rowx"><span>Valor venta</span><span class="num">${money(t.valorVenta, cur)}</span></div>
+      <div class="rowx"><span>IGV ${t.igvPct}%</span><span class="num">${money(t.igv, cur)}</span></div>
+      <div class="rowx grand"><span>Total</span><span class="num">${money(t.total, cur)}</span></div>
+      <p class="muted" style="font-size:.75rem;margin-top:6px">${esc(importeEnLetras(t.total, cur))}</p></div></div>
+  </div>
+  <div class="panel"><div class="panel-head"><h2>Condiciones comerciales</h2><span class="muted" style="font-size:.82rem">Prellenadas desde Configuración</span></div><div class="panel-body grid2">
+    ${fld("t-valid", "Validez de la oferta (días)", W.validityDays, { bind: "validityDays", type: "number", attrs: "data-num" })}
+    ${fld("t-deliv", "Tiempo de entrega", W.deliveryTime, { bind: "deliveryTime" })}
+    ${fld("t-pay", "Forma de pago", W.paymentTerms, { bind: "paymentTerms" })}
+    ${fld("t-war", "Garantía", W.warranty, { bind: "warranty" })}
+    ${fld("t-place", "Lugar de entrega", W.deliveryPlace, { bind: "deliveryPlace" })}
+    <div class="field"><label for="t-notes">Notas</label><textarea class="input" id="t-notes" data-bind="notes" style="min-height:42px" placeholder="Ej.: No incluye instalación de puntos de gas.">${esc(W.notes)}</textarea></div>
+  </div></div>
+  ${conv.length ? `<div class="ai-box"><details class="conv"><summary>${I.sparkle}Conversación con la IA (${conv.reduce((s, r) => s + r.questions.length, 0)} preguntas)</summary><div style="margin-top:8px">${conv.map(r => r.questions.map(q => { const a = r.answers[q.id]; return `<div class="conv-item"><b>${esc(q.text)}</b><br>${a === "__skip" || a == null ? '<span class="muted">Omitida</span>' : esc([].concat(a).join(", "))}</div>`; }).join("")).join("")}</div></details></div>` : ""}
+  <div class="row" style="justify-content:flex-end"><button class="btn" data-act="save-draft">Guardar borrador</button><a class="btn" href="#pdf">${I.file}Vista previa PDF</a><button class="btn primary" data-act="download-pdf">${I.download}Descargar PDF</button></div>`;
+}
+/* columna de borrar en desktop vs. botón flotante en móvil */
+document.head.insertAdjacentHTML("beforeend", `<style>.lrow .c-del{display:none}.lrow .c-del-d{display:block}@media (max-width:900px){.lrow .c-del{display:inline-grid}.lrow .c-del-d{display:none}}</style>`);
+
+/* ============ validación y navegación del wizard ============ */
+function validateStep(n) {
+  errors = {};
+  if (n === 1) {
+    const c = W.client;
+    if (!c.name.trim()) errors.name = "Ingresa la razón social o el nombre.";
+    if (!c.phone.trim() && !c.email.trim()) errors.contact = "Ingresa un teléfono o un email.";
+    const d = c.documentNumber.trim();
+    if (d && !(c.documentType === "RUC" ? /^\d{11}$/ : /^\d{8}$/).test(d)) errors.doc = c.documentType === "RUC" ? "El RUC tiene 11 dígitos." : "El DNI tiene 8 dígitos.";
+  }
+  if (n === 2 && !W.businessProfile.businessType) errors.businessType = "Elige el tipo de negocio.";
+  return !Object.keys(errors).length;
+}
+function persistClient() {
+  const c = W.client; if (!c.id) c.id = uid();
+  store.clients.upsert(clone(c)); W.clientId = c.id;
+}
+function setStep(n) { W.step = n; W.maxStep = Math.max(W.maxStep, n); store.quotes.upsert(W); render(); window.scrollTo(0, 0); }
+function applyProposal() {
+  const keep = W.lines.filter(l => l.source === "manual");
+  const add = W.aiProposal.lines.filter(l => l.selected).map(l => { const p = store.products.get(l.productId); return p ? makeLine(W, p, l.quantity, { source: "ai", reason: l.reason, confidence: l.confidence }) : null; }).filter(Boolean);
+  W.lines = add.concat(keep); W.stale = false;
+}
+function ctxFor() {
+  return { template: DB.template, profile: W.businessProfile, needsText: W.needsText, chips: W.chips, answers: W.aiAnswers, round: W.aiRound,
+    catalog: DB.products.filter(p => p.active) };
+}
+async function runAnalyze() {
+  busy = true; W.aiRound = 1; W.aiAnswers = {}; W.aiConversation = []; render();
+  const res = await aiService.getClarifyingQuestions(ctxFor());
+  W.aiPending = res.questions; W.aiConversation.push({ round: 1, at: new Date().toISOString(), questions: res.questions, answers: null });
+  W.ui3 = "b"; busy = false; store.quotes.upsert(W); render();
+}
+async function runPropose() {
+  const last = W.aiConversation[W.aiConversation.length - 1];
+  if (last) last.answers = Object.fromEntries((W.aiPending || []).map(q => [q.id, W.aiAnswers[q.id] ?? "__skip"]));
+  (W.aiPending || []).forEach(q => { if (W.aiAnswers[q.id] == null) W.aiAnswers[q.id] = "__skip"; });
+  if (W.aiRound === 1) {
+    busy = "La IA está revisando tus respuestas…"; render();
+    W.aiRound = 2;
+    const res = await aiService.getClarifyingQuestions(ctxFor());
+    if (res.questions.length) { W.aiPending = res.questions; W.aiConversation.push({ round: 2, at: new Date().toISOString(), questions: res.questions, answers: null }); busy = false; W.ui3 = "b"; store.quotes.upsert(W); render(); return; }
+  }
+  await runRecommend();
+}
+async function runRecommend() {
+  busy = "La IA está armando la propuesta…"; render();
+  const res = await aiService.recommendProducts(ctxFor());
+  res.lines.forEach(l => (l.selected = l.confidence !== "baja"));
+  W.aiProposal = res; W.aiPending = null; W.stale = false; W.ui3 = "c"; busy = false;
+  W.aiConversation.push({ round: "propuesta", at: new Date().toISOString(), questions: [], answers: null, summary: res.summary });
+  store.quotes.upsert(W); render();
+}
+
+/* ============ S3 Catálogo ============ */
+const MAP_FIELDS = [["sku", "Código / SKU", true, /^(sku|c[oó]d(igo)?\.?|item|code)$/i], ["name", "Nombre", true, /^(nombre|producto|descripci[oó]n|name)$/i], ["description", "Descripción", false, /(detalle|descripci[oó]n larga|caracter|description)/i],
+  ["category", "Categoría", false, /categor/i], ["brand", "Marca", false, /(marca|brand)/i], ["unit", "Unidad", false, /^(unidad|und|um|u\.m\.)$/i], ["cost", "Costo", true, /(costo|precio|cost|price)/i], ["currency", "Moneda", false, /(moneda|divisa|currency)/i]];
+function parseNum(v) {
+  if (typeof v === "number") return v;
+  let s = String(v ?? "").replace(/[^\d.,-]/g, "");
+  if (!s) return NaN;
+  const lc = s.lastIndexOf(","), ld = s.lastIndexOf(".");
+  if (lc > ld) s = s.replace(/\./g, "").replace(",", "."); else s = s.replace(/,/g, "");
+  return parseFloat(s);
+}
+function normCur(v) { const s = String(v ?? "").trim().toUpperCase(); if (!s) return DB.settings.defaultCurrency || "PEN"; if (/^(PEN|S\/|SOLES?)$/.test(s)) return "PEN"; if (/^(USD|US\$|\$|D[OÓ]LAR(ES)?)$/.test(s)) return "USD"; return null; }
+function mappedRows() {
+  const m = CAT.mapping;
+  return CAT.rows.map((r, i) => {
+    const get = k => m[k] != null && m[k] !== "" ? r[m[k]] : "";
+    const errs = [];
+    const sku = String(get("sku") ?? "").trim(), name = String(get("name") ?? "").trim(), cost = parseNum(get("cost")), cur = normCur(get("currency"));
+    if (!sku) errs.push("Falta código"); if (!name) errs.push("Falta nombre"); if (!(cost > 0)) errs.push("Costo inválido"); if (!cur) errs.push("Moneda no es PEN ni USD");
+    const used = new Set(Object.values(m).filter(x => x !== "" && x != null).map(Number));
+    const attributes = {}; CAT.headers.forEach((h, j) => { if (!used.has(j) && r[j] !== "" && r[j] != null) attributes[h.toLowerCase()] = r[j]; });
+    if (attributes["energía"]) attributes.energy = String(attributes["energía"]).toLowerCase(); if (attributes["voltaje"]) attributes.voltage = String(attributes["voltaje"]).toUpperCase();
+    return { row: i + 2, errs, p: { sku, name, description: String(get("description") ?? ""), category: String(get("category") || "Sin categoría"), brand: String(get("brand") ?? ""), unit: String(get("unit") || "und"), cost: round2(cost), currency: cur, attributes } };
+  });
+}
+function handleFile(file) {
+  if (!file) return;
+  if (!window.XLSX) { toast("No se pudo cargar el lector de Excel. Revisa tu conexión."); return; }
+  const fr = new FileReader();
+  fr.onload = () => {
+    try {
+      let wb;
+      if (/\.csv$/i.test(file.name)) { const txt = new TextDecoder("utf-8").decode(fr.result); const sep = (txt.split("\n")[0].match(/;/g) || []).length > (txt.split("\n")[0].match(/,/g) || []).length ? ";" : ","; wb = XLSX.read(txt, { type: "string", FS: sep }); }
+      else wb = XLSX.read(fr.result, { type: "array" });
+      const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "", raw: true }).filter(r => r.some(c => String(c).trim() !== ""));
+      if (aoa.length < 2) { toast("El archivo no tiene filas de productos."); return; }
+      CAT.headers = aoa[0].map(h => String(h).trim()); CAT.rows = aoa.slice(1); CAT.fileName = file.name;
+      CAT.mapping = {}; MAP_FIELDS.forEach(([k, , , re]) => { const j = CAT.headers.findIndex((h, jj) => re.test(h) && !Object.values(CAT.mapping).includes(jj)); CAT.mapping[k] = j >= 0 ? j : ""; });
+      CAT.stage = "map"; render();
+    } catch (e) { toast("No se pudo leer el archivo. Usa .xlsx, .xls o .csv."); }
+  };
+  fr.readAsArrayBuffer(file);
+}
+function doImport() {
+  const rows = mappedRows(), ok = rows.filter(r => !r.errs.length), bad = rows.filter(r => r.errs.length);
+  const mk = p => { const ex = DB.products.find(x => x.sku === p.sku); return Object.assign({ id: ex ? ex.id : uid(), active: true, tags: ex && ex.tags && ex.tags.length ? ex.tags : autoTags(p.name) }, p, { attributes: Object.assign({}, ex ? ex.attributes : {}, p.attributes) }); };
+  if (CAT.mode === "replace") DB.products = ok.map(r => mk(r.p));
+  else ok.forEach(r => { const i = DB.products.findIndex(x => x.sku === r.p.sku); if (i >= 0) DB.products[i] = mk(r.p); else DB.products.push(mk(r.p)); });
+  saveDB(); CAT.result = { ok: ok.length, bad }; CAT.stage = "done"; render();
+}
+function viewCatalog() {
+  const head = `<header class="pagehead"><div><p class="eyebrow">Lista de precios · costos sin IGV</p><h1>Catálogo</h1></div><div class="row"><button class="btn" data-act="tpl-download">${I.download}Descargar plantilla .xlsx</button><button class="btn primary" data-act="pick-file">${I.upload}Importar Excel o CSV</button></div></header>`;
+  if (CAT.stage === "map") {
+    const rows = mappedRows(), bad = rows.filter(r => r.errs.length).length;
+    const opts = sel => `<option value="">— No usar —</option>` + CAT.headers.map((h, j) => `<option value="${j}" ${String(sel) === String(j) ? "selected" : ""}>${esc(h)}</option>`).join("");
+    return head + `<div class="panel"><div class="panel-head"><div><h2>Asigna las columnas</h2><p class="muted" style="font-size:.85rem">${esc(CAT.fileName)} · ${CAT.rows.length} filas. Las columnas no asignadas se guardan como atributos para la IA.</p></div><button class="btn ghost" data-act="cat-cancel">Cancelar</button></div>
+      <div class="panel-body maprow">${MAP_FIELDS.map(([k, l, req]) => `<div class="field"><label for="map-${k}">${l}${req ? " *" : ""}</label><select class="input" id="map-${k}" data-map="${k}">${opts(CAT.mapping[k])}</select></div>`).join("")}</div></div>
+      <div class="panel"><div class="panel-head"><h2>Vista previa (primeras 20 filas)</h2>${bad ? `<span class="chip st-Rechazada">${bad} con errores, se omitirán</span>` : `<span class="chip st-Aceptada">Sin errores</span>`}</div>
+      <div class="tablewrap"><table class="t"><thead><tr><th>Fila</th><th>Código</th><th>Nombre</th><th>Categoría</th><th class="num">Costo</th><th>Moneda</th><th>Observación</th></tr></thead><tbody>
+      ${rows.slice(0, 20).map(r => `<tr class="${r.errs.length ? "bad" : ""}"><td class="muted">${r.row}</td><td class="mono">${esc(r.p.sku)}</td><td>${esc(r.p.name)}</td><td>${esc(r.p.category)}</td><td class="num">${isNaN(r.p.cost) ? "—" : NF.format(r.p.cost)}</td><td>${esc(r.p.currency || "?")}</td><td>${r.errs.length ? `<span style="color:var(--bad)">${esc(r.errs.join(", "))}</span>` : '<span class="muted">OK</span>'}</td></tr>`).join("")}
+      </tbody></table></div>
+      <div class="panel-body row" style="justify-content:space-between;border-top:1px solid var(--line)"><div class="seg" role="group" aria-label="Modo de importación"><button data-act="cat-mode" data-v="upsert" aria-pressed="${CAT.mode === "upsert"}">Agregar / actualizar por código</button><button data-act="cat-mode" data-v="replace" aria-pressed="${CAT.mode === "replace"}">Reemplazar todo</button></div>
+      <button class="btn primary" data-act="cat-import" ${rows.length - bad ? "" : "disabled"}>Importar ${rows.length - bad} productos</button></div></div>`;
+  }
+  const list = DB.products.filter(p => (!CAT.q || (p.name + " " + p.sku + " " + p.brand).toLowerCase().includes(CAT.q.toLowerCase())) && (!CAT.cat || p.category === CAT.cat) && (!CAT.cur || p.currency === CAT.cur));
+  const cats = [...new Set(DB.products.map(p => p.category))];
+  const done = CAT.stage === "done" && CAT.result ? `<div class="notice ${CAT.result.bad.length ? "" : "ok"}">${I.check}<div><b>${CAT.result.ok} productos importados${CAT.result.bad.length ? `, ${CAT.result.bad.length} con errores` : ""}.</b>${CAT.result.bad.length ? `<ul style="margin:6px 0 0;padding-left:18px;font-size:.85rem">${CAT.result.bad.slice(0, 8).map(b => `<li>Fila ${b.row}: ${esc(b.errs.join(", "))}</li>`).join("")}</ul>` : ""}</div><button class="iconbtn" style="margin-left:auto" data-act="cat-dismiss" aria-label="Cerrar">${I.x}</button></div>` : "";
+  const drop = `<label class="drop" id="drop" for="file-input">${I.upload}<b>Arrastra tu lista de precios aquí</b><span class="muted" style="font-size:.85rem">.xlsx, .xls o .csv (UTF-8, separado por coma o punto y coma). Columnas sugeridas: código, nombre, categoría, marca, costo, moneda.</span></label>`;
+  if (!DB.products.length) return head + done + drop + emptyCatalogCta();
+  return head + done + drop + `<div class="panel"><div class="panel-head"><div class="row" style="flex:1"><div style="position:relative;flex:1;min-width:200px;max-width:340px"><input class="input" id="cat-q" placeholder="Buscar por nombre, código o marca" value="${esc(CAT.q)}" style="padding-left:34px"><span style="position:absolute;left:10px;top:12px;color:var(--muted)">${I.search}</span></div>
+      <select class="input" id="cat-cat" style="width:auto" aria-label="Categoría"><option value="">Todas las categorías</option>${cats.map(c => `<option ${CAT.cat === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>
+      <select class="input" id="cat-cur" style="width:auto" aria-label="Moneda"><option value="">PEN y USD</option><option ${CAT.cur === "PEN" ? "selected" : ""}>PEN</option><option ${CAT.cur === "USD" ? "selected" : ""}>USD</option></select></div>
+      <span class="muted" style="font-size:.85rem">${list.length} de ${DB.products.length} · ${DB.products.filter(p => !p.active).length} inactivos</span></div>
+    <div class="tablewrap" style="max-height:640px"><table class="t"><thead><tr><th>Código</th><th>Producto</th><th>Categoría</th><th>Marca</th><th>Energía</th><th class="num">Costo</th><th>Activo</th><th></th></tr></thead><tbody>
+    ${list.map(p => CAT.editing === p.id ? `<tr><td class="mono">${esc(p.sku)}</td><td><input class="input" id="ed-name" value="${esc(p.name)}"></td><td><select class="input" id="ed-cat">${cats.map(c => `<option ${c === p.category ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></td><td><input class="input" id="ed-brand" value="${esc(p.brand)}"></td><td class="muted">${esc(p.attributes.energy || "")}</td>
+        <td><div class="row" style="flex-wrap:nowrap"><select class="input" id="ed-cur" style="min-width:70px"><option ${p.currency === "PEN" ? "selected" : ""}>PEN</option><option ${p.currency === "USD" ? "selected" : ""}>USD</option></select><input class="input" id="ed-cost" type="number" step="0.01" value="${p.cost}"></div></td><td></td>
+        <td><div class="row" style="flex-wrap:nowrap"><button class="btn primary sm" data-act="ed-save" data-id="${p.id}">Guardar</button><button class="btn sm" data-act="ed-cancel">Cancelar</button></div></td></tr>`
+      : `<tr class="${p.active ? "" : "inactive"}"><td class="mono">${esc(p.sku)}</td><td><b style="font-weight:600">${esc(p.name)}</b><br><small class="muted">${esc(p.attributes.modelo ? "Modelo " + p.attributes.modelo + " · " : "")}${esc(p.attributes.voltage || "")}</small></td><td>${esc(p.category)}</td><td>${esc(p.brand)}</td><td>${esc(p.attributes.energy || "—")}</td><td class="num">${money(p.cost, p.currency)}</td>
+        <td><input type="checkbox" class="toggle" data-act="toggle-active" data-id="${p.id}" ${p.active ? "checked" : ""} aria-label="${p.active ? "Desactivar" : "Activar"} ${esc(p.name)}"></td><td><button class="btn ghost sm" data-act="ed-start" data-id="${p.id}">Editar</button></td></tr>`).join("")}
+    </tbody></table></div></div>`;
+}
+async function saveFile(filename, data) {
+  if (!DL) {
+    try {
+      const blob = data instanceof Blob ? data : new Blob([data], { type: /\.pdf$/.test(filename) ? "application/pdf" : "application/octet-stream" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename;
+      document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      toast("Archivo listo: " + filename); return true;
+    } catch (e) { toast("No se pudo descargar el archivo."); return false; }
+  }
+  try { await DL.save({ filename, data }); toast("Archivo listo: " + filename); return true; }
+  catch (e) { if (e && e.code === "declined") toast("Descarga cancelada."); else toast("No se pudo descargar el archivo."); return false; }
+}
+function templateXlsx() {
+  const head = ["Código", "Nombre", "Descripción", "Categoría", "Marca", "Unidad", "Costo", "Moneda", "Energía", "Voltaje", "Modelo"];
+  const rows = DEMO.filter(r => r[11] !== false).map(r => [r[0], r[1], r[2], r[3], r[4], "und", r[5], r[6], r[7], r[8], (r[9] || {}).modelo || ""]);
+  rows.push(["", "Fila de ejemplo sin código", "", "Cocción", "", "und", 100, "PEN", "", "", ""]);
+  rows.push(["ERR-01", "Fila de ejemplo con costo inválido", "", "Cocción", "", "und", "consultar", "PEN", "", "", ""]);
+  const ws = XLSX.utils.aoa_to_sheet([head, ...rows]); ws["!cols"] = [12, 44, 60, 22, 20, 8, 10, 8, 10, 8, 18].map(w => ({ wch: w }));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Lista de precios");
+  return XLSX.write(wb, { bookType: "xlsx", type: "array" });
+}
+
+/* ============ S5 Configuración ============ */
+function viewConfig() {
+  const s = DB.settings;
+  const f = (id, label, key, o = {}) => `<div class="field ${o.cls || ""}"><label for="${id}">${label}</label><input class="input" id="${id}" data-set="${key}" ${o.num ? "data-num" : ""} type="${o.type || "text"}" ${o.attrs || ""} value="${esc(s[key])}">${o.hint ? `<span class="hint">${o.hint}</span>` : ""}</div>`;
+  return `<header class="pagehead"><div><p class="eyebrow">Datos para precios y PDF</p><h1>Configuración</h1></div><button class="btn primary" data-act="save-settings">Guardar</button></header>
+  <div class="panel"><div class="panel-head"><h2>Empresa</h2></div><div class="panel-body grid2">
+    <div class="field span2"><span class="lbl">Logo</span><div class="row">${s.logo ? `<img src="${s.logo}" alt="Logo" style="max-height:52px;max-width:180px;border:1px solid var(--line);border-radius:6px;padding:4px;background:#fff">` : `<div class="brand-mark" style="width:52px;height:52px;font-size:18px">EGP</div>`}<button class="btn sm" data-act="pick-logo">${I.upload}Subir PNG o JPG</button>${s.logo ? `<button class="btn ghost sm danger" data-act="del-logo">Quitar</button>` : ""}</div></div>
+    ${f("s-name", "Razón social", "companyName")}${f("s-ruc", "RUC", "ruc", { attrs: 'inputmode="numeric" maxlength="11"' })}
+    ${f("s-addr", "Dirección", "address", { cls: "span2" })}${f("s-phone", "Teléfono", "phone")}${f("s-email", "Email", "email", { type: "email" })}
+    ${f("s-seller", "Vendedor (pie del PDF)", "seller")}${f("s-bank", "Cuentas bancarias (pie del PDF)", "bankLine")}
+  </div></div>
+  <div class="panel"><div class="panel-head"><h2>Precios</h2></div><div class="panel-body grid3">
+    ${f("s-rate", "Tipo de cambio USD → PEN", "exchangeRate", { num: 1, type: "number", attrs: 'step="0.001"', hint: "Venta SUNAT del 21 de octubre de 2026: S/ 3.436" })}
+    ${f("s-igv", "IGV %", "igv", { num: 1, type: "number" })}${f("s-margin", "Margen por defecto % (sobre costo)", "defaultMargin", { num: 1, type: "number" })}
+    <div class="field"><label for="s-cur">Moneda por defecto</label><select class="input" id="s-cur" data-set="defaultCurrency"><option ${s.defaultCurrency === "PEN" ? "selected" : ""}>PEN</option><option ${s.defaultCurrency === "USD" ? "selected" : ""}>USD</option></select></div>
+    ${f("s-next", "Siguiente número de cotización", "nextNumber", { num: 1, type: "number", hint: `Próxima: COT-${new Date().getFullYear()}-${String(s.nextNumber).padStart(4, "0")}` })}
+  </div></div>
+  <div class="panel"><div class="panel-head"><h2>Condiciones por defecto</h2></div><div class="panel-body grid2">
+    ${f("s-valid", "Validez (días)", "validityDays", { num: 1, type: "number" })}${f("s-deliv", "Tiempo de entrega", "deliveryTime")}${f("s-pay", "Forma de pago", "paymentTerms")}${f("s-war", "Garantía", "warranty")}${f("s-place", "Lugar de entrega", "deliveryPlace")}
+  </div></div>
+  <div class="panel"><div class="panel-head"><h2>Plantillas de industria</h2><span class="muted" style="font-size:.82rem">Solo lectura en v1</span></div><div class="panel-body">
+    <div class="row" style="justify-content:space-between"><span><b>${esc(DB.template.name)}</b><br><small class="muted">${DB.template.categories.length} categorías · ${DB.template.profileQuestions.length} preguntas de perfil · ${DB.template.keywordRules.length} reglas de palabras clave</small></span><span class="chip st-Aceptada">Activa</span></div></div></div>
+  <div class="panel"><div class="panel-head"><h2>Datos de demostración</h2></div><div class="panel-body row">
+    ${confirmReset ? `<span>Se borrarán tus cotizaciones, clientes y catálogo actuales.</span><button class="btn danger" data-act="reset-demo">Sí, restablecer</button><button class="btn ghost" data-act="reset-cancel">Cancelar</button>`
+      : `<button class="btn" data-act="reset-ask">Restablecer datos de demostración</button><button class="btn ghost" data-act="clear-catalog">Vaciar catálogo (ver estado vacío)</button>`}
+    <span class="muted" style="font-size:.82rem;flex-basis:100%">Los datos se guardan solo en este navegador.</span></div></div>`;
+}
+
+/* ============ S4 Vista previa PDF ============ */
+function pdfRows(q) {
+  const groups = {}, order = [];
+  q.lines.forEach(l => { if (!groups[l.category]) { groups[l.category] = []; order.push(l.category); } groups[l.category].push(l); });
+  const rows = []; let n = 0;
+  order.forEach(c => { rows.push({ cat: c }); groups[c].forEach(l => rows.push({ l, n: ++n })); });
+  return rows;
+}
+const attrLine = l => { const a = l.attributes || {}; return [l.brand, a.modelo && "Mod. " + a.modelo, a.capacidad, a.potencia, a.voltage, a.dimensiones && a.dimensiones + " cm"].filter(Boolean).join(" · "); };
+function viewPdf() {
+  const q = W, s = DB.settings, c = clientOf(q), t = pricing.totals(q), cur = q.currency;
+  const rows = pdfRows(q), pages = []; let curP = [], cap = 11;
+  rows.forEach(r => { const w = r.cat ? 0.6 : 1; if (cap - w < 0) { pages.push(curP); curP = []; cap = 17; } curP.push(r); cap -= w; });
+  const lastNeedsNew = cap < 6; pages.push(curP); if (lastNeedsNew) pages.push([]);
+  const N = pages.length;
+  const head = `<div class="sh-head"><div class="sh-logo">${s.logo ? `<img src="${s.logo}" alt="">` : `<div class="sh-mark">EGP</div>`}</div><div class="sh-co"><b>${esc(s.companyName)}</b>RUC ${esc(s.ruc)}<br>${esc(s.address)}<br>${esc(s.phone)} · ${esc(s.email)}</div></div>`;
+  const table = rs => rs.length ? `<table class="sh-table"><thead><tr><th style="width:34px">Ítem</th><th style="width:78px">Código</th><th>Descripción</th><th style="width:40px;text-align:right">Cant.</th><th style="width:36px">Und.</th><th style="width:88px;text-align:right">P. Unit.</th><th style="width:96px;text-align:right">Total</th></tr></thead><tbody>
+    ${rs.map(r => r.cat ? `<tr class="cat"><td colspan="7">${esc(r.cat)}</td></tr>` : `<tr><td>${r.n}</td><td style="font-family:var(--f-mono);font-size:10px">${esc(r.l.sku)}</td><td><b>${esc(r.l.name)}</b><div class="d">${esc(r.l.description)}</div><div class="d">${esc(attrLine(r.l))}</div></td><td class="num">${r.l.quantity}</td><td>${esc(r.l.unit)}</td><td class="num">${money(r.l.unitPrice, cur)}</td><td class="num">${money(r.l.lineTotal, cur)}</td></tr>`).join("")}</tbody></table>` : "";
+  const totals = `<div class="sh-tot"><div><span>Subtotal</span><span class="num">${money(t.subtotal, cur)}</span></div>${t.descuento > 0 ? `<div><span>Descuento ${q.discount}%</span><span class="num">− ${money(t.descuento, cur)}</span></div>` : ""}<div><span>Valor venta</span><span class="num">${money(t.valorVenta, cur)}</span></div><div><span>IGV ${t.igvPct}%</span><span class="num">${money(t.igv, cur)}</span></div><div class="g"><span>Total</span><span class="num">${money(t.total, cur)}</span></div></div>
+    <div class="sh-words">${esc(importeEnLetras(t.total, cur))}</div>
+    <dl class="sh-terms"><dt>Validez de la oferta</dt><dd>${esc(q.validityDays)} días</dd><dt>Tiempo de entrega</dt><dd>${esc(q.deliveryTime)}</dd><dt>Forma de pago</dt><dd>${esc(q.paymentTerms)}</dd><dt>Garantía</dt><dd>${esc(q.warranty)}</dd><dt>Lugar de entrega</dt><dd>${esc(q.deliveryPlace)}</dd>${q.notes ? `<dt>Notas</dt><dd>${esc(q.notes)}</dd>` : ""}${cur === "USD" ? `<dt>Tipo de cambio referencial</dt><dd>S/ ${q.exchangeRate}</dd>` : ""}</dl>`;
+  const sheets = pages.map((rs, i) => `<article class="sheet" aria-label="Página ${i + 1} de ${N}">${head}
+    ${i === 0 ? `<div class="sh-title"><h2>COTIZACIÓN</h2><div style="text-align:right"><b style="font-size:14px">${esc(q.number)}</b><br>Lima, ${esc(fmtDateLong(q.createdAt))}</div></div>
+      <div class="sh-client"><div><span>Señor(es):</span> <b>${esc(c.name)}</b></div><div><span>${esc(c.documentType)}:</span> ${esc(c.documentNumber || "—")}</div><div><span>Contacto:</span> ${esc(c.contactName || "—")}</div><div><span>Teléfono:</span> ${esc(c.phone || "—")}</div><div><span>Dirección:</span> ${esc([c.address, c.city].filter(Boolean).join(", ") || "—")}</div><div><span>Email:</span> ${esc(c.email || "—")}</div></div>
+      <p style="margin-top:12px">De acuerdo a lo solicitado, tenemos el agrado de presentarle la siguiente propuesta:</p>` : `<p style="margin-top:12px;color:var(--paper-muted)">${esc(q.number)} · continuación</p>`}
+    ${table(rs)}${i === N - 1 ? totals : ""}
+    <div class="sh-foot"><span>Atentamente, ${esc(s.seller)} · ${esc(s.companyName)}<br>${esc(s.bankLine)}</span><span style="white-space:nowrap">Página ${i + 1} de ${N}</span></div></article>`).join("");
+  return `<header class="pagehead"><div><p class="eyebrow">Vista previa · A4 vertical · así la verá el cliente</p><h1>${esc(q.number)}</h1></div>
+    <div class="row"><a class="btn" href="#cotizacion">${I.left}Volver a editar</a>${q.status !== "Enviada" ? `<button class="btn" data-act="mark-sent">Marcar como Enviada</button>` : `<span class="chip st-Enviada">Enviada</span>`}<button class="btn primary" data-act="download-pdf">${I.download}Descargar PDF</button></div></header>
+    ${q.lines.length ? "" : `<div class="notice bad">${I.alert}<span>La cotización no tiene productos. Agrégalos antes de generar el PDF.</span></div>`}
+    <div class="sheets" id="sheets">${sheets}</div>`;
+}
+function fitSheets() {
+  const box = $("#sheets"); if (!box) return;
+  const z = Math.min(1, (box.clientWidth - 4) / 794);
+  box.querySelectorAll(".sheet").forEach(s => (s.style.zoom = z));
+}
+window.addEventListener("resize", fitSheets);
+
+/* ============ PDF con jsPDF ============ */
+function buildPdf(q) {
+  const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const s = DB.settings, c = clientOf(q), t = pricing.totals(q), cur = q.currency;
+  const ACC = [13, 90, 80], INK = [29, 36, 33], MUT = [93, 103, 98], BAND = [238, 242, 239];
+  const W_ = 210, M = 15;
+  const m = n => money(n, cur);
+  // cabecera
+  if (s.logo) { try { const fmt = /png/i.test(s.logo.slice(0, 30)) ? "PNG" : "JPEG"; const p = doc.getImageProperties(s.logo); const h = 16, w = Math.min(50, p.width / p.height * h); doc.addImage(s.logo, fmt, M, 14, w, h); } catch (e) {} }
+  else { doc.setFillColor(...ACC); doc.roundedRect(M, 13, 16, 16, 2.5, 2.5, "F"); doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(9.5); doc.text("EGP", M + 8, 22.6, { align: "center" }); }
+  doc.setTextColor(...INK); doc.setFont("helvetica", "bold"); doc.setFontSize(10.5); doc.text(s.companyName, W_ - M, 16, { align: "right" });
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8.3); doc.setTextColor(...MUT);
+  [`RUC ${s.ruc}`, s.address, `${s.phone} · ${s.email}`].forEach((l, i) => doc.text(l, W_ - M, 20.5 + i * 4, { align: "right" }));
+  doc.setDrawColor(...ACC); doc.setLineWidth(0.6); doc.line(M, 34, W_ - M, 34);
+  doc.setTextColor(...ACC); doc.setFont("helvetica", "bold"); doc.setFontSize(17); doc.text("COTIZACIÓN", M, 44);
+  doc.setTextColor(...INK); doc.setFontSize(11); doc.text(q.number, W_ - M, 41, { align: "right" });
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.text(`Lima, ${fmtDateLong(q.createdAt)}`, W_ - M, 45.5, { align: "right" });
+  // cliente
+  doc.setFillColor(...BAND); doc.roundedRect(M, 50, W_ - 2 * M, 23, 1.5, 1.5, "F");
+  const cl = [["Señor(es):", c.name], [`${c.documentType}:`, c.documentNumber || "-"], ["Contacto:", c.contactName || "-"], ["Teléfono:", c.phone || "-"], ["Dirección:", [c.address, c.city].filter(Boolean).join(", ") || "-"], ["Email:", c.email || "-"]];
+  cl.forEach(([k, v], i) => { const x = i % 2 ? 118 : M + 4, y = 56 + Math.floor(i / 2) * 6; doc.setTextColor(...MUT); doc.setFont("helvetica", "normal"); doc.text(k, x, y); doc.setTextColor(...INK); doc.setFont("helvetica", i === 0 ? "bold" : "normal"); doc.text(doc.splitTextToSize(String(v), i % 2 ? 58 : 78)[0], x + 18, y); });
+  doc.setFont("helvetica", "normal"); doc.setTextColor(...INK); doc.setFontSize(9);
+  doc.text("De acuerdo a lo solicitado, tenemos el agrado de presentarle la siguiente propuesta:", M, 80);
+  // tabla
+  const body = [];
+  pdfRows(q).forEach(r => {
+    if (r.cat) body.push([{ content: r.cat.toUpperCase(), colSpan: 7, styles: { fillColor: BAND, textColor: ACC, fontStyle: "bold", fontSize: 7.5 } }]);
+    else { const extra = [r.l.description, attrLine(r.l)].filter(Boolean).join("\n"); body.push([String(r.n), r.l.sku, { content: r.l.name + "\n" + extra, _name: r.l.name, _extra: extra }, String(r.l.quantity), r.l.unit, NF.format(r.l.unitPrice), NF.format(r.l.lineTotal)]); }
+  });
+  doc.autoTable({
+    startY: 84, margin: { left: M, right: M, bottom: 24, top: 18 }, head: [["Ítem", "Código", "Descripción", "Cant.", "Und.", `P. Unit. ${sym(cur)}`, `Total ${sym(cur)}`]], body, showHead: "everyPage", theme: "plain",
+    styles: { font: "helvetica", fontSize: 8, textColor: INK, cellPadding: 1.8, lineColor: [217, 223, 219], lineWidth: { bottom: 0.2 } },
+    headStyles: { fillColor: ACC, textColor: 255, fontStyle: "bold", lineWidth: 0 },
+    columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 22, fontSize: 7 }, 2: { cellWidth: "auto" }, 3: { cellWidth: 12, halign: "right" }, 4: { cellWidth: 11 }, 5: { cellWidth: 24, halign: "right" }, 6: { cellWidth: 26, halign: "right" } },
+    didParseCell: d => { if (d.section === "head" && d.column.index >= 5) d.cell.styles.halign = "right"; if (d.section === "head" && d.column.index === 3) d.cell.styles.halign = "right"; },
+    willDrawCell: d => { if (d.section === "body" && d.column.index === 2 && d.cell.raw && d.cell.raw._name) { d.cell._keep = d.cell.text; d.cell.text = []; } },
+    didDrawCell: d => {
+      if (d.section === "body" && d.column.index === 2 && d.cell.raw && d.cell.raw._name) {
+        const x = d.cell.x + 1.8, w = d.cell.width - 3.6; let y = d.cell.y + 1.8 + 2.8;
+        doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(...INK);
+        doc.splitTextToSize(d.cell.raw._name, w).forEach(l => { doc.text(l, x, y); y += 3.4; });
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...MUT);
+        doc.splitTextToSize(d.cell.raw._extra, w).forEach(l => { doc.text(l, x, y); y += 3.4; });
+        doc.setTextColor(...INK);
+      }
+    },
+  });
+  let y = doc.lastAutoTable.finalY + 6;
+  const termRows = [["Validez de la oferta", `${q.validityDays} días`], ["Tiempo de entrega", q.deliveryTime], ["Forma de pago", q.paymentTerms], ["Garantía", q.warranty], ["Lugar de entrega", q.deliveryPlace]];
+  if (q.notes) termRows.push(["Notas", q.notes]);
+  if (cur === "USD") termRows.push(["Tipo de cambio referencial", `S/ ${q.exchangeRate}`]);
+  if (y + 52 + termRows.length * 5 > 272) { doc.addPage(); y = 20; }
+  const tx = 122, tl = [["Subtotal", m(t.subtotal)]]; if (t.descuento > 0) tl.push([`Descuento ${q.discount}%`, "- " + m(t.descuento)]); tl.push(["Valor venta", m(t.valorVenta)], [`IGV ${t.igvPct}%`, m(t.igv)]);
+  doc.setFontSize(9); tl.forEach(([k, v]) => { doc.setTextColor(...MUT); doc.text(k, tx, y); doc.setTextColor(...INK); doc.text(v, W_ - M, y, { align: "right" }); y += 5; });
+  doc.setDrawColor(...INK); doc.setLineWidth(0.4); doc.line(tx, y - 2.5, W_ - M, y - 2.5); y += 2.5;
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text("Total", tx, y); doc.text(m(t.total), W_ - M, y, { align: "right" }); y += 7;
+  doc.setFontSize(8.3); doc.setDrawColor(217, 223, 219); const words = doc.splitTextToSize(importeEnLetras(t.total, cur), W_ - 2 * M - 6);
+  doc.roundedRect(M, y - 4, W_ - 2 * M, words.length * 4 + 3.5, 1, 1, "S"); words.forEach(l => { doc.text(l, M + 3, y); y += 4; }); y += 6;
+  doc.setFontSize(9.5); doc.setTextColor(...ACC); doc.text("Condiciones comerciales", M, y); y += 5.5; doc.setFontSize(8.5);
+  termRows.forEach(([k, v]) => { doc.setFont("helvetica", "normal"); doc.setTextColor(...MUT); doc.text(k, M, y); doc.setTextColor(...INK); const ls = doc.splitTextToSize(String(v), 130); ls.forEach((l, i) => doc.text(l, M + 48, y + i * 4)); y += Math.max(5, ls.length * 4 + 1); });
+  // pie en todas las páginas
+  const N = doc.getNumberOfPages();
+  for (let i = 1; i <= N; i++) {
+    doc.setPage(i); doc.setDrawColor(217, 223, 219); doc.setLineWidth(0.2); doc.line(M, 281, W_ - M, 281);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...MUT);
+    doc.text(`Atentamente, ${s.seller} · ${s.companyName}`, M, 285); if (s.bankLine) doc.text(s.bankLine, M, 289);
+    doc.text(`Página ${i} de ${N}`, W_ - M, 285, { align: "right" });
+  }
+  return doc;
+}
+async function downloadPdf(q, markSent) {
+  if (!q.lines.length) { errors.lines = "Agrega al menos un producto para generar el PDF."; render(); return; }
+  if (!window.jspdf) { toast("No se pudo cargar el generador de PDF. Revisa tu conexión."); return; }
+  const doc = buildPdf(q);
+  const ok = await saveFile(`${q.number}_${slug(clientOf(q).name)}.pdf`, doc.output("arraybuffer"));
+  if (ok && markSent && q.status === "Borrador") { q.status = "Enviada"; store.quotes.upsert(q); render(); toast("PDF descargado. Cotización marcada como Enviada."); }
+}
+function modal(html) { $("#modal").innerHTML = html ? `<div class="modal-bg" data-act="modal-bg"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>` : ""; }
+function askDownload(q) {
+  if (!q.lines.length) { errors.lines = "Agrega al menos un producto para generar el PDF."; render(); toast("La cotización no tiene productos."); return; }
+  if (q.status !== "Borrador") { downloadPdf(q, false); return; }
+  modal(`<header><h2>Descargar PDF</h2><button class="iconbtn" data-act="modal-close" aria-label="Cerrar">${I.x}</button></header><div class="mb"><p>Se generará <span class="mono">${esc(q.number)}_${esc(slug(clientOf(q).name))}.pdf</span>. ¿Marcar la cotización como <b>Enviada</b>?</p><p class="muted" style="font-size:.85rem">El PDF no incluye costos, márgenes ni razones de la IA.</p></div>
+    <footer><button class="btn" data-act="dl-only">Solo descargar</button><button class="btn primary" data-act="dl-sent">${I.download}Descargar y marcar Enviada</button></footer>`);
+}
+function openAddProduct(qs = "") {
+  const list = DB.products.filter(p => p.active && (!qs || (p.name + " " + p.sku + " " + p.brand + " " + p.category).toLowerCase().includes(qs.toLowerCase()))).slice(0, 40);
+  const html = list.map(p => `<div class="pick"><div style="min-width:0"><b style="font-weight:600">${esc(p.name)}</b><br><small class="muted"><span class="mono">${esc(p.sku)}</span> · ${esc(p.brand)} · ${esc(p.category)}</small></div><div class="row" style="flex-wrap:nowrap"><span class="num muted" style="font-size:.85rem">${money(pricing.unitPrice(pricing.convert(p.cost, p.currency, W.currency, W.exchangeRate), W.defaultMargin), W.currency)}</span><button class="btn sm" data-act="add-pick" data-id="${p.id}">Agregar</button></div></div>`).join("") || `<p class="muted">Sin resultados.</p>`;
+  if ($("#pick-list")) { $("#pick-list").innerHTML = html; return; }
+  modal(`<header><h2>Agregar producto</h2><button class="iconbtn" data-act="modal-close" aria-label="Cerrar">${I.x}</button></header><div class="mb"><input class="input" id="pick-q" placeholder="Buscar en el catálogo" autocomplete="off"><div id="pick-list">${html}</div></div>`);
+  setTimeout(() => $("#pick-q") && $("#pick-q").focus(), 30);
+}
+
+/* ============ eventos ============ */
+function setPath(obj, path, val) { const ks = path.split("."); let o = obj; ks.slice(0, -1).forEach(k => (o = o[k] = o[k] || {})); o[ks[ks.length - 1]] = val; }
+const ACT = {
+  "demo-catalog": () => { const keep = DB.products.length; DB.products = demoProducts(); saveDB(); toast(`${DB.products.length} productos de demostración cargados.`); render(); },
+  "open-quote": t => { DB.ui.currentQuoteId = t.dataset.id; saveDB(); go("cotizacion"); },
+  "dup-quote": t => { const o = store.quotes.get(t.dataset.id); const now = new Date().toISOString(); const q = Object.assign(clone(o), { id: uid(), number: nextNumber(), status: "Borrador", createdAt: now, updatedAt: now }); q.lines.forEach(l => (l.id = uid())); store.quotes.upsert(q); toast(`Duplicada como ${q.number}.`); render(); },
+  "pdf-quote": t => { const q = store.quotes.get(t.dataset.id); DB.ui.currentQuoteId = q.id; saveDB(); askDownload(q); },
+  "goto-step": t => { const n = +t.dataset.step; if (n > W.maxStep) return; if (W.step === 1 && n > 1) { if (!validateStep(1)) return render(); persistClient(); } errors = {}; setStep(n); },
+  "back": () => { errors = {}; if (W.step > 1) setStep(W.step - 1); },
+  "next": () => {
+    if (!validateStep(W.step)) { render(); return; }
+    if (W.step === 1) persistClient();
+    if (W.step === 3 && W.ui3 === "c" && W.aiProposal) applyProposal();
+    setStep(W.step + 1);
+  },
+  "save-draft": () => { if (W.client.name.trim()) persistClient(); store.quotes.upsert(W); toast(`Borrador ${W.number} guardado.`); },
+  "currency": t => { const c = t.dataset.cur; if (c === W.currency) return; W.currency = c; pricing.recalc(W); store.quotes.upsert(W); render(); },
+  "pick-client": t => { const c = store.clients.get(t.dataset.id); W.client = clone(c); W.clientId = c.id; errors = {}; store.quotes.upsert(W); render(); },
+  "client-new": () => { W.client = emptyClient(); W.clientId = null; render(); },
+  "prof": t => { W.businessProfile[t.dataset.q] = t.dataset.v; if (W.aiProposal) W.stale = true; errors = {}; store.quotes.upsert(W); render(); },
+  "prof-multi": t => { const a = W.businessProfile[t.dataset.q] = W.businessProfile[t.dataset.q] || []; const i = a.indexOf(t.dataset.v); i >= 0 ? a.splice(i, 1) : a.push(t.dataset.v); if (W.aiProposal) W.stale = true; store.quotes.upsert(W); render(); },
+  "chip": t => { const i = W.chips.indexOf(t.dataset.v); i >= 0 ? W.chips.splice(i, 1) : W.chips.push(t.dataset.v); if (W.aiProposal) W.stale = true; render(); },
+  "analyze": () => runAnalyze(),
+  "view-proposal": () => { W.ui3 = "c"; render(); },
+  "back-3a": () => { W.ui3 = "a"; render(); },
+  "back-3b": () => { if (W.aiConversation.some(r => r.questions.length)) { const rounds = W.aiConversation.filter(r => r.questions.length); W.aiPending = rounds[rounds.length - 1].questions; W.aiRound = rounds.length; W.ui3 = "b"; } else W.ui3 = "a"; render(); },
+  "ai-opt": t => { const id = t.dataset.q, v = t.dataset.v; if (t.dataset.multi === "true") { let a = Array.isArray(W.aiAnswers[id]) ? W.aiAnswers[id] : []; a = a.includes(v) ? a.filter(x => x !== v) : a.concat(v); W.aiAnswers[id] = a; } else W.aiAnswers[id] = W.aiAnswers[id] === v ? null : v; render(); },
+  "ai-skip": t => { W.aiAnswers[t.dataset.q] = W.aiAnswers[t.dataset.q] === "__skip" ? null : "__skip"; render(); },
+  "propose": () => runPropose(),
+  "regen": () => { W.stale = false; runRecommend(); },
+  "keep-proposal": () => { W.stale = false; render(); },
+  "pl-toggle": t => { W.aiProposal.lines[+t.dataset.i].selected = t.checked; store.quotes.upsert(W); rerender(); },
+  "del-line": t => { W.lines.splice(+t.dataset.i, 1); store.quotes.upsert(W); render(); },
+  "add-product": () => openAddProduct(),
+  "add-pick": t => { const p = store.products.get(t.dataset.id); W.lines.push(makeLine(W, p, 1, { source: "manual" })); errors = {}; store.quotes.upsert(W); modal(""); render(); toast(`${p.name} agregado.`); },
+  "modal-close": () => modal(""),
+  "modal-bg": (t, e) => { if (e.target === t) modal(""); },
+  "download-pdf": () => askDownload(W),
+  "dl-only": () => { modal(""); downloadPdf(store.quotes.get(DB.ui.currentQuoteId), false); },
+  "dl-sent": () => { modal(""); downloadPdf(store.quotes.get(DB.ui.currentQuoteId), true); },
+  "mark-sent": () => { W.status = "Enviada"; store.quotes.upsert(W); toast(`${W.number} marcada como Enviada.`); render(); },
+  "pick-file": () => $("#file-input").click(),
+  "cat-cancel": () => { CAT.stage = "list"; render(); },
+  "cat-mode": t => { CAT.mode = t.dataset.v; render(); },
+  "cat-import": () => doImport(),
+  "cat-dismiss": () => { CAT.stage = "list"; CAT.result = null; render(); },
+  "tpl-download": () => { if (!window.XLSX) return toast("No se pudo cargar el generador de Excel."); saveFile("plantilla_lista_de_precios.xlsx", templateXlsx()); },
+  "toggle-active": t => { const p = store.products.get(t.dataset.id); p.active = t.checked; saveDB(); rerender(); },
+  "ed-start": t => { CAT.editing = t.dataset.id; render(); },
+  "ed-cancel": () => { CAT.editing = null; render(); },
+  "ed-save": t => { const p = store.products.get(t.dataset.id); const cost = parseNum($("#ed-cost").value); if (!(cost > 0)) return toast("El costo debe ser un número positivo."); Object.assign(p, { name: $("#ed-name").value.trim() || p.name, category: $("#ed-cat").value, brand: $("#ed-brand").value.trim(), currency: $("#ed-cur").value, cost: round2(cost) }); CAT.editing = null; saveDB(); toast("Producto actualizado."); render(); },
+  "save-settings": () => { saveDB(); toast("Configuración guardada."); render(); },
+  "pick-logo": () => $("#logo-input").click(),
+  "del-logo": () => { DB.settings.logo = ""; saveDB(); render(); },
+  "reset-ask": () => { confirmReset = true; render(); },
+  "reset-cancel": () => { confirmReset = false; render(); },
+  "reset-demo": () => { confirmReset = false; seedDB(); W = null; CAT.stage = "list"; toast("Datos de demostración restablecidos."); go("inicio"); },
+  "clear-catalog": () => { DB.products = []; saveDB(); toast("Catálogo vaciado."); go("inicio"); },
+};
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-act]"); if (!t || t.disabled) return;
+  const a = t.dataset.act; if (!ACT[a]) return;
+  if (t.tagName === "INPUT" && t.type === "checkbox") { ACT[a](t, e); return; }
+  if (a === "modal-bg" && e.target !== t) return;
+  e.preventDefault(); ACT[a](t, e);
+});
+document.addEventListener("input", e => {
+  const t = e.target;
+  if (t.id === "cli-search") return renderClientResults(t.value);
+  if (t.id === "cat-q") { CAT.q = t.value; return rerenderCatalogTable(); }
+  if (t.id === "pick-q") return openAddProduct(t.value);
+  if (t.dataset.bind && W) {
+    const v = t.dataset.num !== undefined ? (t.value === "" ? "" : +t.value) : t.value;
+    setPath(W, t.dataset.bind, v);
+    if (t.dataset.bind === "client.documentType") rerender();
+    if ((t.dataset.bind.startsWith("businessProfile") || t.dataset.bind === "needsText") && W.aiProposal) W.stale = true;
+    if (t.dataset.bind === "needsText") { const b = $('[data-act="analyze"]'); if (b) b.disabled = !(t.value.trim() || W.chips.length); }
+    clearTimeout(ACT._s); ACT._s = setTimeout(() => store.quotes.upsert(W), 400);
+  }
+  if (t.dataset.set) { DB.settings[t.dataset.set] = t.dataset.num !== undefined ? +t.value : t.value; clearTimeout(ACT._s2); ACT._s2 = setTimeout(saveDB, 400); }
+  if (t.dataset.aiOther) { const id = t.dataset.aiOther, q = (W.aiPending || []).find(x => x.id === id), v = t.value.trim(); let cur = W.aiAnswers[id];
+    if (t.dataset.multi === "true") { cur = (Array.isArray(cur) ? cur : []).filter(x => q.options.includes(x)); if (v) cur.push(v); W.aiAnswers[id] = cur; } else W.aiAnswers[id] = v || null;
+    document.querySelectorAll(`[data-act="ai-opt"][data-q="${id}"]`).forEach(b => b.setAttribute("aria-pressed", t.dataset.multi === "true" ? String((W.aiAnswers[id] || []).includes(b.dataset.v)) : "false")); }
+  if (t.dataset.aiNum) W.aiAnswers[t.dataset.aiNum] = t.value === "" ? null : +t.value;
+});
+function rerenderCatalogTable() { clearTimeout(rerenderCatalogTable._t); rerenderCatalogTable._t = setTimeout(rerender, 180); }
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.id === "c-doctype") { W.client.documentType = t.value; rerender(); return; }
+  if (t.id === "cat-cat") { CAT.cat = t.value; return render(); }
+  if (t.id === "cat-cur") { CAT.cur = t.value; return render(); }
+  if (t.dataset.map) { CAT.mapping[t.dataset.map] = t.value === "" ? "" : +t.value; return render(); }
+  if (t.dataset.status) { const q = store.quotes.get(t.dataset.status); q.status = t.value; store.quotes.upsert(q); toast(`${q.number}: ${q.status}`); return render(); }
+  if (t.dataset.set === "defaultCurrency") { DB.settings.defaultCurrency = t.value; saveDB(); return; }
+  if (t.dataset.plq) { const l = W.aiProposal.lines[+t.dataset.plq]; l.quantity = Math.max(1, Math.round(+t.value || 1)); store.quotes.upsert(W); return rerender(); }
+  if (t.dataset.line) {
+    const l = W.lines[+t.dataset.line], v = +t.value;
+    if (t.dataset.f === "quantity") l.quantity = Math.max(1, Math.round(v || 1));
+    if (t.dataset.f === "margin") l.marginOverride = isFinite(v) ? v : null;
+    if (t.dataset.f === "unitPrice" && v > 0) l.marginOverride = pricing.marginFrom(round2(v), l.unitCost);
+    pricing.recalcLine(W, l); store.quotes.upsert(W); return rerender();
+  }
+  if (t.dataset.bind && W && t.dataset.rerender !== undefined) { if (t.dataset.bind === "exchangeRate" || t.dataset.bind === "defaultMargin") pricing.recalc(W); if (t.dataset.bind === "discount") W.discount = Math.min(100, Math.max(0, +t.value || 0)); store.quotes.upsert(W); return rerender(); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#modal").innerHTML) modal(""); });
+$("#file-input").addEventListener("change", e => { handleFile(e.target.files[0]); e.target.value = ""; });
+$("#logo-input").addEventListener("change", e => { const f = e.target.files[0]; if (!f) return; const fr = new FileReader(); fr.onload = () => { DB.settings.logo = fr.result; saveDB(); render(); toast("Logo actualizado."); }; fr.readAsDataURL(f); e.target.value = ""; });
+document.addEventListener("dragover", e => { const d = e.target.closest && e.target.closest("#drop"); if (d) { e.preventDefault(); d.classList.add("hover"); } });
+document.addEventListener("dragleave", e => { const d = e.target.closest && e.target.closest("#drop"); if (d) d.classList.remove("hover"); });
+document.addEventListener("drop", e => { const d = e.target.closest && e.target.closest("#drop"); if (d) { e.preventDefault(); d.classList.remove("hover"); handleFile(e.dataTransfer.files[0]); } });
+function bindDrag() {
+  const box = $("#lines"); if (!box) return; let from = null;
+  box.querySelectorAll(".lrow[data-idx]").forEach(r => {
+    r.addEventListener("dragstart", e => { if (/INPUT|BUTTON/.test(document.activeElement.tagName) && r.contains(document.activeElement)) { e.preventDefault(); return; } from = +r.dataset.idx; r.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
+    r.addEventListener("dragend", () => r.classList.remove("dragging"));
+    r.addEventListener("dragover", e => { e.preventDefault(); r.classList.add("over"); });
+    r.addEventListener("dragleave", () => r.classList.remove("over"));
+    r.addEventListener("drop", e => { e.preventDefault(); const to = +r.dataset.idx; if (from == null || from === to) return; const [m] = W.lines.splice(from, 1); W.lines.splice(to, 0, m); store.quotes.upsert(W); render(); });
+  });
+}
+render();
+</script>
+
+</body>
+</html>
